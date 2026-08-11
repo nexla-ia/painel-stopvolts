@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -7,49 +10,37 @@ import Users from './pages/Users';
 import PromoCodes from './pages/PromoCodes';
 import Tariffs from './pages/Tariffs';
 
-function AppContent() {
+function LoginRoute() {
   const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [darkMode, setDarkMode] = useState(true);
+  if (!loading && user) return <Navigate to="/" replace />;
+  return <Login />;
+}
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Login />;
-  }
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard darkMode={darkMode} />;
-      case 'users':
-        return <Users darkMode={darkMode} />;
-      case 'promo-codes':
-        return <PromoCodes darkMode={darkMode} />;
-      case 'tariffs':
-        return <Tariffs darkMode={darkMode} />;
-      default:
-        return <Dashboard darkMode={darkMode} />;
-    }
-  };
-
+function AppRoutes() {
   return (
-    <Layout currentPage={currentPage} onNavigate={setCurrentPage} darkMode={darkMode} setDarkMode={setDarkMode}>
-      {renderPage()}
-    </Layout>
+    <Routes>
+      <Route path="/login" element={<LoginRoute />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/promo-codes" element={<PromoCodes />} />
+          <Route path="/tariffs" element={<Tariffs />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Route>
+    </Routes>
   );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ThemeProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
