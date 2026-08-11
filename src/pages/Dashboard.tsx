@@ -68,7 +68,7 @@ export default function Dashboard() {
       }).length;
 
       const usersWithPromoThisMonth = users.filter(
-        u => u.promo_code && new Date(u.created_at) >= firstDayThisMonth
+        u => u.promo_code_used && new Date(u.created_at) >= firstDayThisMonth
       ).length;
 
       setStats({

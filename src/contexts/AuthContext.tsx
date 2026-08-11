@@ -60,7 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+      await supabase.auth.signOut();
       setProfile(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', data.user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        await supabase.auth.signOut();
+        throw profileError;
+      }
 
       if (profileData.role !== 'admin') {
         await supabase.auth.signOut();

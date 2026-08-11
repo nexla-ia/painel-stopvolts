@@ -18,7 +18,7 @@ export interface Profile {
   state: string | null;
   plan: 'free' | 'premium';
   role: 'user' | 'admin';
-  promo_code: string | null;
+  promo_code_used: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,7 +77,9 @@ export interface EnergyTariff {
   distributor: string;
   tariff_flag: string;
   flag_value: number;
-  valid_year: number;
+  valid_from: string;
+  valid_until: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
