@@ -47,7 +47,7 @@ export default function Dashboard() {
 
       const users = usersResult.data || [];
 
-      const basicUsers = users.filter(u => u.plan === 'basic').length;
+      const basicUsers = users.filter(u => u.plan === 'free').length;
       const premiumUsers = users.filter(u => u.plan === 'premium').length;
 
       const stateCount = users.reduce((acc: Record<string, number>, user: Profile) => {

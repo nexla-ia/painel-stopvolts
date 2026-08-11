@@ -77,7 +77,7 @@ export default function Users() {
   }
 
   const planStats = {
-    basic: users.filter(u => u.plan === 'basic').length,
+    free: users.filter(u => u.plan === 'free').length,
     premium: users.filter(u => u.plan === 'premium').length,
   };
 
@@ -100,7 +100,7 @@ export default function Users() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard index={0} icon={UserIcon} accent="info" label="Plano Básico" value={planStats.basic} />
+        <StatCard index={0} icon={UserIcon} accent="info" label="Plano Básico" value={planStats.free} />
         <StatCard index={1} icon={Crown} accent="warning" label="Plano Premium" value={planStats.premium} />
         <StatCard index={2} icon={ShieldCheck} accent="danger" label="Administradores" value={roleStats.admin} />
         <StatCard index={3} icon={UserIcon} accent="success" label="Usuários Comuns" value={roleStats.user} />
@@ -122,7 +122,7 @@ export default function Users() {
           <div className="flex gap-3">
             <select value={planFilter} onChange={e => setPlanFilter(e.target.value)} className={selectClass}>
               <option value="all">Todos os Planos</option>
-              <option value="basic">Básico</option>
+              <option value="free">Básico</option>
               <option value="premium">Premium</option>
             </select>
 
@@ -186,7 +186,7 @@ export default function Users() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant={user.plan === 'premium' ? 'warning' : 'info'} icon={user.plan === 'premium' && <Crown className="w-3 h-3" />}>
-                      {user.plan.charAt(0).toUpperCase() + user.plan.slice(1)}
+                      {user.plan === 'premium' ? 'Premium' : 'Básico'}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

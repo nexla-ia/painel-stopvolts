@@ -16,7 +16,7 @@ export interface Profile {
   phone: string | null;
   city: string | null;
   state: string | null;
-  plan: 'basic' | 'premium';
+  plan: 'free' | 'premium';
   role: 'user' | 'admin';
   promo_code: string | null;
   created_at: string;
