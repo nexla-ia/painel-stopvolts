@@ -21,18 +21,80 @@ export interface Profile {
   promo_code_used: string | null;
   created_at: string;
   updated_at: string;
+  is_active: boolean;
+  device_limit: number;
+  subscription_status: string | null;
+  subscription_end_date: string | null;
+  monthly_consumption_kwh: number | null;
+  monthly_consumption_cost: number | null;
+  estimated_savings: number | null;
+  last_login_at: string | null;
+  login_count: number;
 }
+
+/**
+ * Colunas de `profiles` que o painel administrativo busca.
+ *
+ * Lista explícita em vez de `select('*')` de propósito: o endereço residencial
+ * (street, zip_code) não é carregado, para o painel não trafegar dado pessoal
+ * que não precisa exibir. Cidade/estado ficam por serem usados nos filtros e na
+ * distribuição regional do painel.
+ */
+export const PROFILE_COLUMNS = [
+  'id',
+  'email',
+  'full_name',
+  'phone',
+  'city',
+  'state',
+  'plan',
+  'role',
+  'promo_code_used',
+  'created_at',
+  'updated_at',
+  'is_active',
+  'device_limit',
+  'subscription_status',
+  'subscription_end_date',
+  'monthly_consumption_kwh',
+  'monthly_consumption_cost',
+  'estimated_savings',
+  'last_login_at',
+  'login_count',
+].join(', ');
 
 export interface Device {
   id: string;
   user_id: string;
+  category_id: string | null;
   name: string;
-  category: string;
+  brand: string | null;
+  model: string | null;
   power_watts: number;
   hours_per_day: number;
+  days_per_week: number;
+  is_active: boolean;
   quantity: number;
   created_at: string;
   profiles?: Profile;
+}
+
+export interface DeviceCategory {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
+export interface UserStats {
+  user_id: string;
+  full_name: string | null;
+  total_devices: number;
+  active_devices: number;
+  estimated_monthly_kwh: number | null;
+  estimated_monthly_cost: number | null;
+  achievements_count: number;
+  total_points: number;
+  leaderboard_rank: number | null;
 }
 
 export interface EnergyGoal {

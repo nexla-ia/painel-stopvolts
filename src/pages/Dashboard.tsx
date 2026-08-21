@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { supabase, Profile } from '../lib/supabase';
+import { supabase, Profile, PROFILE_COLUMNS } from '../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { Users, Tag, MapPin, TicketCheck, Crown, Clock } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import Panel from '../components/ui/Panel';
 import Skeleton from '../components/ui/Skeleton';
+import UserGrowthPanel from '../components/UserGrowthPanel';
 
 interface Stats {
   totalUsers: number;
@@ -28,6 +29,7 @@ export default function Dashboard() {
     newUsersThisMonth: 0,
     newUsersLastMonth: 0,
   });
+  const [allUsers, setAllUsers] = useState<Profile[]>([]);
   const [recentUsers, setRecentUsers] = useState<Profile[]>([]);
   const [stateDistribution, setStateDistribution] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     try {
       const [usersResult, promoCodesResult] = await Promise.all([
-        supabase.from('profiles').select('*'),
+        supabase.from('profiles').select(PROFILE_COLUMNS).returns<Profile[]>(),
         supabase.from('promo_codes').select('*', { count: 'exact', head: true }).eq('is_active', true),
       ]);
 
@@ -68,7 +70,7 @@ export default function Dashboard() {
       }).length;
 
       const usersWithPromoThisMonth = users.filter(
-        u => u.promo_code_used && new Date(u.created_at) >= firstDayThisMonth
+        u => u.promo_code_used && new Date(u.created_at) >= firstDayThisMonth,
       ).length;
 
       setStats({
@@ -81,8 +83,11 @@ export default function Dashboard() {
         newUsersLastMonth,
       });
 
+      setAllUsers(users);
       setRecentUsers(
-        [...users].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5)
+        [...users]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5),
       );
       setStateDistribution(stateCount);
     } catch (error) {
@@ -126,8 +131,13 @@ export default function Dashboard() {
     .slice(0, 5);
 
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Visão Geral" title="Painel de Controle" subtitle="Métricas em tempo real do sistema" />
+    // O <main> não rola no desktop, então o painel gerencia o próprio scroll.
+    <div className="space-y-6 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
+      <PageHeader
+        eyebrow="Visão Geral"
+        title="Painel de Controle"
+        subtitle="Métricas em tempo real do sistema"
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -163,6 +173,8 @@ export default function Dashboard() {
           sublabel="Neste mês"
         />
       </div>
+
+      <UserGrowthPanel users={allUsers} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Panel className="p-6">
@@ -234,7 +246,10 @@ export default function Dashboard() {
                     <p className="text-xs text-faint truncate">{user.email}</p>
                   </div>
                   <span className="text-xs text-faint font-mono shrink-0">
-                    {new Date(user.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    {new Date(user.created_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                    })}
                   </span>
                 </div>
               ))}

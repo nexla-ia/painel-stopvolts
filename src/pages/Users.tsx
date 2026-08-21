@@ -1,22 +1,51 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase, Profile } from '../lib/supabase';
+import { supabase, Profile, UserStats, DeviceCategory, PROFILE_COLUMNS } from '../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Filter, Crown, User as UserIcon, ShieldCheck } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Crown,
+  User as UserIcon,
+  ChevronRight,
+  Cpu,
+  AlertTriangle,
+  ShieldAlert,
+} from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import Panel from '../components/ui/Panel';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
-import { inputClass, selectClass } from '../components/ui/classes';
+import UserDetailPanel from '../components/UserDetailPanel';
+import SplitView from '../components/ui/SplitView';
+import { inputClass, selectClass, splitItemClass } from '../components/ui/classes';
+
+interface UserRow extends Profile {
+  stats?: UserStats;
+}
+
+type SortKey = 'recent' | 'devices' | 'lastLogin' | 'logins';
+
+const deviceCountOf = (user: UserRow) => user.stats?.total_devices ?? 0;
+/** Estourou o limite do plano — usa mais dispositivos do que o plano permite. */
+const isOverLimit = (user: UserRow) => deviceCountOf(user) > user.device_limit;
+/** Bateu exatamente o teto do plano — candidato natural a upgrade. */
+const isAtLimit = (user: UserRow) => deviceCountOf(user) === user.device_limit;
 
 export default function Users() {
   const toast = useToast();
-  const [users, setUsers] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [categories, setCategories] = useState<Record<string, DeviceCategory>>({});
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [stateFilter, setStateFilter] = useState<string>('all');
+  const [engagementFilter, setEngagementFilter] = useState<'all' | 'overLimit' | 'atLimit' | 'neverLoggedIn'>(
+    'all',
+  );
+  const [sortKey, setSortKey] = useState<SortKey>('recent');
 
   useEffect(() => {
     loadUsers();
@@ -24,13 +53,44 @@ export default function Users() {
 
   const loadUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [profilesResult, statsResult, categoriesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select(PROFILE_COLUMNS)
+          .order('created_at', { ascending: false })
+          .returns<Profile[]>(),
+        supabase.from('user_stats_view').select('*'),
+        supabase.from('device_categories').select('id, name, icon'),
+      ]);
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (profilesResult.error) throw profilesResult.error;
+
+      const statsByUser: Record<string, UserStats> = {};
+      if (statsResult.error) {
+        console.error('Error loading user stats:', statsResult.error);
+      } else {
+        for (const row of statsResult.data || []) {
+          statsByUser[row.user_id] = row;
+        }
+      }
+
+      if (categoriesResult.error) {
+        console.error('Error loading device categories:', categoriesResult.error);
+      } else {
+        const catMap: Record<string, DeviceCategory> = {};
+        for (const row of categoriesResult.data || []) {
+          catMap[row.id] = row;
+        }
+        setCategories(catMap);
+      }
+
+      const merged: UserRow[] = (profilesResult.data || []).map(p => ({
+        ...p,
+        stats: statsByUser[p.id],
+      }));
+
+      setUsers(merged);
+      setSelectedUserId(prev => prev ?? merged[0]?.id ?? null);
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Não foi possível carregar os usuários.');
@@ -41,23 +101,47 @@ export default function Users() {
 
   const states = useMemo(
     () => [...new Set(users.map(u => u.state).filter((s): s is string => Boolean(s)))].sort(),
-    [users]
+    [users],
   );
 
   const filteredUsers = useMemo(() => {
-    return users.filter(user => {
-      if (
-        searchTerm &&
-        !user.email.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      ) {
-        return false;
+    const term = searchTerm.trim().toLowerCase();
+
+    const list = users.filter(user => {
+      if (term) {
+        const haystack = [user.full_name, user.email, user.phone, user.city, user.state]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
       }
       if (planFilter !== 'all' && user.plan !== planFilter) return false;
       if (stateFilter !== 'all' && user.state !== stateFilter) return false;
+      if (engagementFilter === 'overLimit' && !isOverLimit(user)) return false;
+      if (engagementFilter === 'atLimit' && !isAtLimit(user)) return false;
+      if (engagementFilter === 'neverLoggedIn' && user.login_count > 0) return false;
       return true;
     });
-  }, [users, searchTerm, planFilter, stateFilter]);
+
+    const bySortKey = (a: UserRow, b: UserRow) => {
+      if (sortKey === 'devices') return deviceCountOf(b) - deviceCountOf(a);
+      if (sortKey === 'logins') return (b.login_count ?? 0) - (a.login_count ?? 0);
+      if (sortKey === 'lastLogin') {
+        const aTime = a.last_login_at ? new Date(a.last_login_at).getTime() : 0;
+        const bTime = b.last_login_at ? new Date(b.last_login_at).getTime() : 0;
+        return bTime - aTime;
+      }
+      // 'recent': profiles já vêm ordenados por created_at desc do banco
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    };
+
+    // Quem estourou o limite sobe para o topo em qualquer ordenação — são os
+    // casos que exigem ação (upgrade de plano ou revisão de dispositivos).
+    return [...list].sort((a, b) => {
+      const priority = Number(isOverLimit(b)) - Number(isOverLimit(a));
+      return priority !== 0 ? priority : bySortKey(a, b);
+    });
+  }, [users, searchTerm, planFilter, stateFilter, engagementFilter, sortKey]);
 
   if (loading) {
     return (
@@ -81,17 +165,31 @@ export default function Users() {
     premium: users.filter(u => u.plan === 'premium').length,
   };
 
-  const roleStats = {
-    admin: users.filter(u => u.role === 'admin').length,
-    user: users.filter(u => u.role === 'user').length,
+  const totalDevices = users.reduce((sum, u) => sum + deviceCountOf(u), 0);
+  const usersOverLimit = users.filter(isOverLimit).length;
+  const usersAtLimit = users.filter(isAtLimit).length;
+  const neverLoggedIn = users.filter(u => (u.login_count ?? 0) === 0).length;
+  const avgDevices = users.length > 0 ? Math.round((totalDevices / users.length) * 10) / 10 : 0;
+
+  const formatLastLogin = (value: string | null) => {
+    if (!value) return 'Nunca logou';
+    return new Date(value).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
+  const selectedUser = filteredUsers.find(u => u.id === selectedUserId) || filteredUsers[0] || null;
+
   return (
-    <div className="space-y-6">
+    // Bloco de topo com altura natural; o SplitView consome a altura restante.
+    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
       <PageHeader
         eyebrow="Base de Usuários"
         title="Usuários"
-        subtitle="Gerenciar todos os usuários cadastrados"
+        subtitle="Contas, dispositivos conectados e histórico de acesso, tudo em um lugar"
         actions={
           <span className="bg-volt text-volt-ink px-4 py-2 rounded-md font-display font-bold text-lg leading-none shadow-lg shadow-volt/20">
             {users.length}
@@ -102,115 +200,168 @@ export default function Users() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard index={0} icon={UserIcon} accent="info" label="Plano Básico" value={planStats.free} />
         <StatCard index={1} icon={Crown} accent="warning" label="Plano Premium" value={planStats.premium} />
-        <StatCard index={2} icon={ShieldCheck} accent="danger" label="Administradores" value={roleStats.admin} />
-        <StatCard index={3} icon={UserIcon} accent="success" label="Usuários Comuns" value={roleStats.user} />
+        <StatCard
+          index={2}
+          icon={Cpu}
+          accent="volt"
+          label="Dispositivos Conectados"
+          value={totalDevices}
+          sublabel={`${avgDevices} em média por conta`}
+        />
+        <StatCard
+          index={3}
+          icon={AlertTriangle}
+          accent="danger"
+          label="Estouraram o Limite"
+          value={usersOverLimit}
+          sublabel={`${usersAtLimit} exatamente no teto do plano`}
+        />
       </div>
 
-      <Panel className="p-5">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
-            <input
-              type="text"
-              placeholder="Buscar por email ou nome..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className={`${inputClass} pl-10`}
-            />
-          </div>
+      {usersOverLimit > 0 && (
+        <button
+          onClick={() => setEngagementFilter(engagementFilter === 'overLimit' ? 'all' : 'overLimit')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors ${
+            engagementFilter === 'overLimit'
+              ? 'border-danger bg-danger-soft'
+              : 'border-danger/40 bg-danger-soft hover:border-danger'
+          }`}
+        >
+          <ShieldAlert className="w-5 h-5 text-danger shrink-0" />
+          <span className="flex-1 text-sm text-fg">
+            <strong className="font-semibold text-danger">
+              {usersOverLimit} {usersOverLimit === 1 ? 'conta estourou' : 'contas estouraram'} o limite do
+              plano
+            </strong>
+            <span className="text-muted">
+              {' '}
+              — mais dispositivos do que o plano permite.{' '}
+              {engagementFilter === 'overLimit'
+                ? 'Clique para ver todas as contas.'
+                : 'Clique para filtrar só elas.'}
+            </span>
+          </span>
+        </button>
+      )}
 
-          <div className="flex gap-3">
-            <select value={planFilter} onChange={e => setPlanFilter(e.target.value)} className={selectClass}>
-              <option value="all">Todos os Planos</option>
-              <option value="free">Básico</option>
-              <option value="premium">Premium</option>
-            </select>
-
-            <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} className={selectClass}>
-              <option value="all">Todos os Estados</option>
-              {states.map(state => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
-          </div>
+      <Panel className="p-5 space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
+          <input
+            type="text"
+            placeholder="Buscar por email ou nome..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className={`${inputClass} pl-10`}
+          />
         </div>
 
-        <div className="mt-4 flex items-center gap-2 text-sm text-muted">
-          <Filter className="w-3.5 h-3.5" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <select value={planFilter} onChange={e => setPlanFilter(e.target.value)} className={selectClass}>
+            <option value="all">Todos os Planos</option>
+            <option value="free">Básico</option>
+            <option value="premium">Premium</option>
+          </select>
+
+          <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} className={selectClass}>
+            <option value="all">Todos os Estados</option>
+            {states.map(state => (
+              <option key={state} value={state}>
+                {state}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={engagementFilter}
+            onChange={e => setEngagementFilter(e.target.value as typeof engagementFilter)}
+            className={selectClass}
+          >
+            <option value="all">Toda Atividade</option>
+            <option value="overLimit">Estouraram o Limite</option>
+            <option value="atLimit">No Limite de Dispositivos</option>
+            <option value="neverLoggedIn">Nunca Fizeram Login</option>
+          </select>
+
+          <select
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value as SortKey)}
+            className={selectClass}
+          >
+            <option value="recent">Mais Recentes</option>
+            <option value="devices">Ordenar por Dispositivos</option>
+            <option value="lastLogin">Ordenar por Último Login</option>
+            <option value="logins">Ordenar por Nº de Logins</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <Filter className="w-3.5 h-3.5 shrink-0" />
           <span>
             Mostrando {filteredUsers.length} de {users.length} usuários
+            {neverLoggedIn > 0 && ` · ${neverLoggedIn} nunca fizeram login`}
           </span>
         </div>
       </Panel>
 
-      <Panel className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b border-edge bg-edge/10">
-              <tr>
-                {['Usuário', 'Contato', 'Localização', 'Plano', 'Perfil', 'Registrado'].map(header => (
-                  <th
-                    key={header}
-                    className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-faint"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-edge">
-              {filteredUsers.map(user => (
-                <tr key={user.id} className="transition-colors hover:bg-edge/10">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="shrink-0 h-9 w-9 bg-volt-soft rounded-full flex items-center justify-center">
-                        <span className="text-volt font-semibold text-sm">
-                          {user.full_name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-sm font-medium text-fg">{user.full_name || 'Sem nome'}</div>
-                        <div className="text-sm text-faint">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-muted">{user.phone || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-muted">
-                      {user.city && user.state ? `${user.city}, ${user.state}` : user.state || user.city || '-'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant={user.plan === 'premium' ? 'warning' : 'info'} icon={user.plan === 'premium' && <Crown className="w-3 h-3" />}>
-                      {user.plan === 'premium' ? 'Premium' : 'Básico'}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant={user.role === 'admin' ? 'danger' : 'success'} icon={<UserIcon className="w-3 h-3" />}>
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-faint">
-                    {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredUsers.length === 0 && (
+      {filteredUsers.length === 0 ? (
+        <Panel>
           <EmptyState
             icon={UserIcon}
             title="Nenhum usuário encontrado"
             description="Tente ajustar seus critérios de busca ou filtro."
           />
-        )}
-      </Panel>
+        </Panel>
+      ) : (
+        <div className="lg:flex-1 lg:min-h-0">
+          <SplitView
+            listLabel={`${filteredUsers.length} usuários cadastrados`}
+            list={filteredUsers.map(user => {
+              const isSelected = selectedUser?.id === user.id;
+              const deviceCount = deviceCountOf(user);
+              const over = isOverLimit(user);
+              const atLimit = isAtLimit(user);
+
+              return (
+                <button
+                  key={user.id}
+                  onClick={() => setSelectedUserId(user.id)}
+                  className={splitItemClass(isSelected, over)}
+                >
+                  <div className="shrink-0 h-9 w-9 bg-volt-soft rounded-full flex items-center justify-center">
+                    <span className="text-volt font-semibold text-sm">
+                      {user.full_name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-fg truncate">{user.full_name || 'Sem nome'}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge
+                        variant={over ? 'danger' : atLimit ? 'warning' : 'neutral'}
+                        icon={over ? <AlertTriangle className="w-3 h-3" /> : <Cpu className="w-3 h-3" />}
+                      >
+                        {deviceCount}/{user.device_limit}
+                      </Badge>
+                      <span className="text-[11px] text-faint truncate">
+                        {formatLastLogin(user.last_login_at)}
+                      </span>
+                    </div>
+                  </div>
+                  {user.plan === 'premium' && <Crown className="w-3.5 h-3.5 text-warning shrink-0" />}
+                  <ChevronRight
+                    className={`w-4 h-4 shrink-0 transition-colors ${isSelected ? 'text-volt' : 'text-faint'}`}
+                  />
+                </button>
+              );
+            })}
+            detail={
+              selectedUser && (
+                <UserDetailPanel user={selectedUser} stats={selectedUser.stats} categories={categories} />
+              )
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }

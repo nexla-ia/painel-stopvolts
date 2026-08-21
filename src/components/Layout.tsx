@@ -34,8 +34,10 @@ export default function Layout() {
     }`;
 
   return (
-    <div className="min-h-screen bg-ink">
-      <div className="lg:hidden bg-panel border-b border-edge px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+    // App shell de altura fixa: a janela nunca rola. Só o <main> rola por dentro,
+    // então a sidebar e o cabeçalho mobile ficam sempre visíveis.
+    <div className="h-screen flex flex-col overflow-hidden bg-ink">
+      <div className="lg:hidden bg-panel border-b border-edge px-4 py-3 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5">
           <div className="bg-volt p-1.5 rounded-md">
             <Zap className="w-4 h-4 text-volt-ink" fill="currentColor" />
@@ -51,10 +53,10 @@ export default function Layout() {
         </button>
       </div>
 
-      <div className="flex">
+      <div className="flex flex-1 min-h-0">
         <aside
           className={`
-            fixed lg:sticky lg:top-0 inset-y-0 left-0 z-40 lg:h-screen
+            fixed lg:static inset-y-0 left-0 z-40 lg:h-full shrink-0
             w-64 bg-panel border-r border-edge
             transform transition-transform duration-300 ease-in-out
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -122,8 +124,11 @@ export default function Layout() {
           />
         )}
 
-        <main className="flex-1 p-4 lg:p-8 min-h-screen">
-          <div className="max-w-7xl mx-auto">
+        {/* No mobile o próprio <main> rola. No desktop ele fica travado e cada
+            página decide o que rola por dentro — nas telas lista/detalhe só os
+            dois painéis rolam, mantendo cabeçalho e filtros sempre visíveis. */}
+        <main className="flex-1 min-w-0 overflow-y-auto lg:overflow-hidden p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto lg:h-full">
             <Outlet />
           </div>
         </main>
