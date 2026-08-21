@@ -1,5 +1,6 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { useFocusTrap } from './useFocusTrap';
 
 interface ModalProps {
   title: string;
@@ -9,6 +10,9 @@ interface ModalProps {
 }
 
 export default function Modal({ title, onClose, children, maxWidth = 'max-w-md' }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, onClose);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -19,7 +23,13 @@ export default function Modal({ title, onClose, children, maxWidth = 'max-w-md' 
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`w-full ${maxWidth} rounded-lg border border-edge bg-elevated shadow-2xl animate-fade-up`}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`w-full ${maxWidth} rounded-lg border border-edge bg-elevated shadow-2xl animate-fade-up`}
+      >
         <div className="flex items-center justify-between p-5 border-b border-edge">
           <h2 className="font-display font-bold text-2xl text-fg">{title}</h2>
           <button

@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { supabase, Profile, Device, DeviceCategory, UserStats } from '../lib/supabase';
+import {
+  supabase,
+  Profile,
+  Device,
+  DeviceCategory,
+  UserStats,
+  SubscriptionPlan,
+  planLabel,
+  isPaidPlan,
+} from '../lib/supabase';
 import Badge from './ui/Badge';
 import Spinner from './ui/Spinner';
 import { Mail, Crown, Calendar, LogIn, Zap, Cpu, Trophy, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -8,9 +17,18 @@ interface UserDetailPanelProps {
   user: Profile;
   stats?: UserStats;
   categories: Record<string, DeviceCategory>;
+  plans: Record<string, SubscriptionPlan>;
 }
 
-function Section({ icon: Icon, title, children }: { icon: typeof Mail; title: string; children: React.ReactNode }) {
+function Section({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Mail;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="border border-edge rounded-md p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -31,7 +49,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function UserDetailPanel({ user, stats, categories }: UserDetailPanelProps) {
+export default function UserDetailPanel({ user, stats, categories, plans }: UserDetailPanelProps) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(true);
 
@@ -79,6 +97,12 @@ export default function UserDetailPanel({ user, stats, categories }: UserDetailP
   const devicesBlocked = !loadingDevices && devices.length === 0 && countedDevices > 0;
   const overLimit = countedDevices > user.device_limit;
 
+  const paid = isPaidPlan(user.plan);
+  const hasSubscription = Boolean(user.subscription_status || user.subscription_end_date);
+  // Assinatura ativa registrada num perfil ainda marcado como gratuito indica
+  // pagamento que não promoveu o plano — vale sinalizar em vez de esconder.
+  const subscriptionMismatch = hasSubscription && !paid;
+
   return (
     <div className="space-y-5">
       {overLimit && (
@@ -96,19 +120,26 @@ export default function UserDetailPanel({ user, stats, categories }: UserDetailP
 
       <div className="flex items-center gap-4">
         <div className="shrink-0 h-14 w-14 bg-volt-soft rounded-full flex items-center justify-center">
-          <span className="text-volt font-bold text-xl">{(user.full_name || user.email)[0].toUpperCase()}</span>
+          <span className="text-volt font-bold text-xl">
+            {(user.full_name || user.email)[0].toUpperCase()}
+          </span>
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="font-display font-bold text-xl text-fg truncate">{user.full_name || 'Sem nome'}</h2>
           <p className="text-sm text-faint truncate">{user.email}</p>
           <div className="flex flex-wrap gap-2 mt-1.5">
-            <Badge variant={user.plan === 'premium' ? 'warning' : 'info'} icon={user.plan === 'premium' && <Crown className="w-3 h-3" />}>
-              {user.plan === 'premium' ? 'Premium' : 'Básico'}
+            <Badge variant={paid ? 'warning' : 'info'} icon={paid && <Crown className="w-3 h-3" />}>
+              {planLabel(user.plan, plans)}
             </Badge>
-            <Badge variant={user.role === 'admin' ? 'danger' : 'success'} icon={<ShieldCheck className="w-3 h-3" />}>
+            <Badge
+              variant={user.role === 'admin' ? 'danger' : 'success'}
+              icon={<ShieldCheck className="w-3 h-3" />}
+            >
               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
             </Badge>
-            <Badge variant={user.is_active ? 'success' : 'neutral'}>{user.is_active ? 'Ativo' : 'Inativo'}</Badge>
+            <Badge variant={user.is_active ? 'success' : 'neutral'}>
+              {user.is_active ? 'Ativo' : 'Inativo'}
+            </Badge>
           </div>
         </div>
       </div>
@@ -140,16 +171,43 @@ export default function UserDetailPanel({ user, stats, categories }: UserDetailP
 
         <Section icon={Crown} title="Plano & Assinatura">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Plano" value={user.plan === 'premium' ? 'Premium' : 'Básico'} />
+            <Field label="Plano" value={planLabel(user.plan, plans)} />
             <Field label="Limite de Dispositivos" value={user.device_limit} />
-            <Field label="Status da Assinatura" value={user.subscription_status || '-'} />
-            <Field label="Assinatura Expira em" value={formatDate(user.subscription_end_date)} />
+            {hasSubscription ? (
+              <>
+                <Field label="Status da Assinatura" value={user.subscription_status || 'Não informado'} />
+                <Field
+                  label="Assinatura Expira em"
+                  value={user.subscription_end_date ? formatDate(user.subscription_end_date) : 'Sem prazo'}
+                />
+              </>
+            ) : (
+              <div className="col-span-2">
+                <p className="text-[11px] uppercase tracking-wider text-faint mb-0.5">Assinatura</p>
+                <p className="text-sm text-muted">
+                  Nunca assinou — conta no plano gratuito, sem cobrança registrada.
+                </p>
+              </div>
+            )}
           </div>
+
+          {subscriptionMismatch && (
+            <div className="flex items-start gap-2.5 mt-3 px-3 py-2.5 rounded-md border border-warning/40 bg-warning-soft">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-muted">
+                <strong className="font-semibold text-fg">Assinatura sem plano correspondente.</strong> Existe
+                registro de pagamento, mas o perfil continua marcado como gratuito.
+              </p>
+            </div>
+          )}
         </Section>
 
         <Section icon={Zap} title="Consumo & Engajamento">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Consumo Estimado" value={`${(stats?.estimated_monthly_kwh ?? 0).toFixed(1)} kWh/mês`} />
+            <Field
+              label="Consumo Estimado"
+              value={`${(stats?.estimated_monthly_kwh ?? 0).toFixed(1)} kWh/mês`}
+            />
             <Field
               label="Custo Estimado"
               value={(stats?.estimated_monthly_cost ?? 0).toLocaleString('pt-BR', {
@@ -166,7 +224,10 @@ export default function UserDetailPanel({ user, stats, categories }: UserDetailP
                 </span>
               }
             />
-            <Field label="Posição no Ranking" value={stats?.leaderboard_rank ? `#${stats.leaderboard_rank}` : '-'} />
+            <Field
+              label="Posição no Ranking"
+              value={stats?.leaderboard_rank ? `#${stats.leaderboard_rank}` : '-'}
+            />
           </div>
         </Section>
       </div>
@@ -190,8 +251,9 @@ export default function UserDetailPanel({ user, stats, categories }: UserDetailP
               <strong className="font-semibold text-fg">
                 {countedDevices} dispositivos contabilizados, mas a lista não pôde ser carregada.
               </strong>{' '}
-              A tabela <code className="font-mono text-xs">devices</code> não libera leitura para administradores
-              (RLS). É preciso criar a policy de admin no banco para os aparelhos aparecerem aqui.
+              A tabela <code className="font-mono text-xs">devices</code> não libera leitura para
+              administradores (RLS). É preciso criar a policy de admin no banco para os aparelhos aparecerem
+              aqui.
             </p>
           </div>
         ) : devices.length === 0 ? (

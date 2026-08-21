@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase, Profile, UserStats, DeviceCategory, PROFILE_COLUMNS } from '../lib/supabase';
+import {
+  supabase,
+  Profile,
+  UserStats,
+  DeviceCategory,
+  SubscriptionPlan,
+  PROFILE_COLUMNS,
+  planLabel,
+  isPaidPlan,
+} from '../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
 import {
   Search,
@@ -37,6 +46,7 @@ export default function Users() {
   const toast = useToast();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [categories, setCategories] = useState<Record<string, DeviceCategory>>({});
+  const [plans, setPlans] = useState<Record<string, SubscriptionPlan>>({});
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +63,7 @@ export default function Users() {
 
   const loadUsers = async () => {
     try {
-      const [profilesResult, statsResult, categoriesResult] = await Promise.all([
+      const [profilesResult, statsResult, categoriesResult, plansResult] = await Promise.all([
         supabase
           .from('profiles')
           .select(PROFILE_COLUMNS)
@@ -61,6 +71,7 @@ export default function Users() {
           .returns<Profile[]>(),
         supabase.from('user_stats_view').select('*'),
         supabase.from('device_categories').select('id, name, icon'),
+        supabase.from('subscription_plans').select('*'),
       ]);
 
       if (profilesResult.error) throw profilesResult.error;
@@ -84,6 +95,16 @@ export default function Users() {
         setCategories(catMap);
       }
 
+      if (plansResult.error) {
+        console.error('Error loading subscription plans:', plansResult.error);
+      } else {
+        const planMap: Record<string, SubscriptionPlan> = {};
+        for (const row of plansResult.data || []) {
+          planMap[row.plan_name] = row;
+        }
+        setPlans(planMap);
+      }
+
       const merged: UserRow[] = (profilesResult.data || []).map(p => ({
         ...p,
         stats: statsByUser[p.id],
@@ -98,6 +119,10 @@ export default function Users() {
       setLoading(false);
     }
   };
+
+  // Os planos do filtro saem da própria base, não de uma lista fixa — assim
+  // valores legados como 'premium' continuam filtráveis.
+  const usedPlans = useMemo(() => [...new Set(users.map(u => u.plan).filter(Boolean))].sort(), [users]);
 
   const states = useMemo(
     () => [...new Set(users.map(u => u.state).filter((s): s is string => Boolean(s)))].sort(),
@@ -160,10 +185,12 @@ export default function Users() {
     );
   }
 
-  const planStats = {
-    free: users.filter(u => u.plan === 'free').length,
-    premium: users.filter(u => u.plan === 'premium').length,
-  };
+  const freeUsers = users.filter(u => !isPaidPlan(u.plan)).length;
+  const paidUsers = users.filter(u => isPaidPlan(u.plan)).length;
+  // Pagou mas o perfil continua no gratuito — receita que não virou plano.
+  const paymentWithoutPlan = users.filter(
+    u => !isPaidPlan(u.plan) && (u.subscription_status || u.subscription_end_date),
+  ).length;
 
   const totalDevices = users.reduce((sum, u) => sum + deviceCountOf(u), 0);
   const usersOverLimit = users.filter(isOverLimit).length;
@@ -198,8 +225,15 @@ export default function Users() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard index={0} icon={UserIcon} accent="info" label="Plano Básico" value={planStats.free} />
-        <StatCard index={1} icon={Crown} accent="warning" label="Plano Premium" value={planStats.premium} />
+        <StatCard index={0} icon={UserIcon} accent="info" label="Plano Gratuito" value={freeUsers} />
+        <StatCard
+          index={1}
+          icon={Crown}
+          accent="warning"
+          label="Planos Pagos"
+          value={paidUsers}
+          sublabel={paymentWithoutPlan > 0 ? `${paymentWithoutPlan} pagou sem virar plano` : undefined}
+        />
         <StatCard
           index={2}
           icon={Cpu}
@@ -249,7 +283,7 @@ export default function Users() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
           <input
             type="text"
-            placeholder="Buscar por email ou nome..."
+            placeholder="Buscar por nome, email, telefone ou cidade..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className={`${inputClass} pl-10`}
@@ -259,8 +293,11 @@ export default function Users() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <select value={planFilter} onChange={e => setPlanFilter(e.target.value)} className={selectClass}>
             <option value="all">Todos os Planos</option>
-            <option value="free">Básico</option>
-            <option value="premium">Premium</option>
+            {usedPlans.map(plan => (
+              <option key={plan} value={plan}>
+                {planLabel(plan, plans)}
+              </option>
+            ))}
           </select>
 
           <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} className={selectClass}>
@@ -347,7 +384,12 @@ export default function Users() {
                       </span>
                     </div>
                   </div>
-                  {user.plan === 'premium' && <Crown className="w-3.5 h-3.5 text-warning shrink-0" />}
+                  {isPaidPlan(user.plan) && (
+                    <Crown
+                      className="w-3.5 h-3.5 text-warning shrink-0"
+                      aria-label={planLabel(user.plan, plans)}
+                    />
+                  )}
                   <ChevronRight
                     className={`w-4 h-4 shrink-0 transition-colors ${isSelected ? 'text-volt' : 'text-faint'}`}
                   />
@@ -356,7 +398,12 @@ export default function Users() {
             })}
             detail={
               selectedUser && (
-                <UserDetailPanel user={selectedUser} stats={selectedUser.stats} categories={categories} />
+                <UserDetailPanel
+                  user={selectedUser}
+                  stats={selectedUser.stats}
+                  categories={categories}
+                  plans={plans}
+                />
               )
             }
           />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase, Profile, PROFILE_COLUMNS } from '../lib/supabase';
+import { supabase, Profile, PROFILE_COLUMNS, isPaidPlan } from '../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { Users, Tag, MapPin, TicketCheck, Crown, Clock } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
@@ -49,8 +49,8 @@ export default function Dashboard() {
 
       const users = usersResult.data || [];
 
-      const basicUsers = users.filter(u => u.plan === 'free').length;
-      const premiumUsers = users.filter(u => u.plan === 'premium').length;
+      const basicUsers = users.filter(u => !isPaidPlan(u.plan)).length;
+      const premiumUsers = users.filter(u => isPaidPlan(u.plan)).length;
 
       const stateCount = users.reduce((acc: Record<string, number>, user: Profile) => {
         if (user.state) {
@@ -152,7 +152,7 @@ export default function Dashboard() {
           index={1}
           icon={Users}
           accent="info"
-          label="Plano Básico"
+          label="Plano Gratuito"
           value={stats.basicUsers}
           sublabel={`${stats.totalUsers > 0 ? Math.round((stats.basicUsers / stats.totalUsers) * 100) : 0}% do total`}
         />
@@ -160,7 +160,7 @@ export default function Dashboard() {
           index={2}
           icon={Crown}
           accent="warning"
-          label="Plano Premium"
+          label="Planos Pagos"
           value={stats.premiumUsers}
           sublabel={`${stats.totalUsers > 0 ? Math.round((stats.premiumUsers / stats.totalUsers) * 100) : 0}% do total`}
         />

@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Spinner from './Spinner';
+import { useFocusTrap } from './useFocusTrap';
 
 interface ConfirmDialogProps {
   title: string;
@@ -23,9 +24,27 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
+
+  // Esc cancela — mesmo comportamento do Modal.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pending) onCancel();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onCancel, pending]);
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-md rounded-lg border border-edge bg-elevated shadow-2xl animate-fade-up p-6">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        className="w-full max-w-md rounded-lg border border-edge bg-elevated shadow-2xl animate-fade-up p-6"
+      >
         <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-danger-soft mb-4">
           <AlertTriangle className="w-6 h-6 text-danger" />
         </div>

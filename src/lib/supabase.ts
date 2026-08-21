@@ -16,7 +16,13 @@ export interface Profile {
   phone: string | null;
   city: string | null;
   state: string | null;
-  plan: 'free' | 'premium';
+  /**
+   * Nome do plano gravado em `profiles.plan`. Não é um enum fechado: a tabela
+   * `subscription_plans` define free/bronze/prata/ouro, mas a base ainda tem
+   * contas marcadas como 'premium', de uma nomenclatura antiga. Por isso é
+   * string e a exibição resolve o rótulo pela tabela de planos.
+   */
+  plan: string;
   role: 'user' | 'admin';
   promo_code_used: string | null;
   created_at: string;
@@ -78,6 +84,27 @@ export interface Device {
   created_at: string;
   profiles?: Profile;
 }
+
+export interface SubscriptionPlan {
+  id: string;
+  plan_name: string;
+  display_name: string;
+  price_brl: number;
+  device_limit: number;
+  features: string[] | null;
+  is_active: boolean;
+}
+
+/** Rótulo de exibição de um plano, com fallback para planos fora da tabela. */
+export function planLabel(plan: string, plans: Record<string, SubscriptionPlan>) {
+  const known = plans[plan];
+  if (known) return known.display_name.replace(/\s*\(.*\)\s*$/, '');
+  if (!plan) return 'Sem plano';
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+/** Planos pagos aparecem destacados; o gratuito é o padrão da base. */
+export const isPaidPlan = (plan: string) => Boolean(plan) && plan !== 'free';
 
 export interface DeviceCategory {
   id: string;

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase, Profile } from '../lib/supabase';
+import { supabase, Profile, PROFILE_COLUMNS } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -28,7 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
@@ -43,14 +45,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = async (userId: string) => {
     try {
+      // Lista explícita de colunas: o painel nunca precisa do endereço
+      // residencial, nem do próprio admin.
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PROFILE_COLUMNS)
         .eq('id', userId)
-        .single();
+        .single<Profile>();
 
       if (error) throw error;
 
+      // Uma sessão restaurada de um não-admin (ou um perfil ilegível) precisa
+      // ser encerrada: a rota protegida só checa `user`.
       if (data.role !== 'admin') {
         await supabase.auth.signOut();
         setProfile(null);
@@ -77,6 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
 
     if (data.user) {
+      // A verificação de admin fica só aqui. `onAuthStateChange` também dispara
+      // com este login, mas `loadProfile` apenas lê o perfil — se as duas
+      // rotinas chamassem signOut, a corrida entre elas trocaria esta mensagem
+      // por um erro genérico de sessão.
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('role')
