@@ -1,20 +1,19 @@
 import { ChangeEvent, useRef, useState } from 'react';
-import { MidiaCampanha, LinkCampanha, fileToBase64, formatBytes } from '../../lib/broadcast';
+import { MidiaCampanha, fileToBase64, formatBytes } from '../../lib/broadcast';
+import { ACCEPT_MIDIA, limiteDeTexto, limiteDoTipo, tipoDoMime } from '../../lib/whatsapp';
 import { useMidiaPreviews } from './useMidiaPreviews';
 import { useToast } from '../../contexts/ToastContext';
-import { Image as ImageIcon, Link2, Plus, Trash2, Camera, Lightbulb } from 'lucide-react';
+import { Trash2, Camera, Video, Image } from 'lucide-react';
 import Spinner from '../ui/Spinner';
 import MessagePreview from './MessagePreview';
 import { bigInput, bigLabel, helpText, chipButton } from './ui';
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
 /**
- * Teto do conjunto de fotos. As imagens seguem em base64 dentro do JSON, então
- * passar disso costuma render recusa do servidor — melhor barrar aqui, com uma
- * mensagem clara, do que deixar o envio falhar sem explicação depois.
+ * Teto do conjunto de mídias. Tudo vai em base64 dentro do JSON, e base64 infla
+ * o arquivo em cerca de um terço. Barrar aqui, com mensagem clara, é melhor do
+ * que deixar o envio falhar depois sem explicação.
  */
-const MAX_TOTAL_BYTES = 12 * 1024 * 1024;
-const ACCEPTED = 'image/jpeg,image/png,image/webp,image/gif';
+const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
 interface ComposeStepProps {
   titulo: string;
@@ -23,8 +22,6 @@ interface ComposeStepProps {
   onMensagemChange: (v: string) => void;
   midias: MidiaCampanha[];
   onMidiasChange: (v: MidiaCampanha[]) => void;
-  links: LinkCampanha[];
-  onLinksChange: (v: LinkCampanha[]) => void;
 }
 
 export default function ComposeStep({
@@ -34,8 +31,6 @@ export default function ComposeStep({
   onMensagemChange,
   midias,
   onMidiasChange,
-  links,
-  onLinksChange,
 }: ComposeStepProps) {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +38,9 @@ export default function ComposeStep({
   const previews = useMidiaPreviews(midias);
 
   const novoId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const limite = limiteDeTexto(midias.length > 0);
+  const excedeu = mensagem.length > limite;
 
   const handleFiles = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -55,30 +53,42 @@ export default function ComposeStep({
       let acumulado = midias.reduce((sum, m) => sum + m.tamanho_bytes, 0);
 
       for (const file of files) {
-        if (file.size > MAX_FILE_BYTES) {
-          toast.error(`A foto "${file.name}" é muito grande (${formatBytes(file.size)}). O limite é 5 MB.`);
+        const tipo = tipoDoMime(file.type);
+        if (!tipo) {
+          toast.error(`"${file.name}" não é um formato que o WhatsApp aceita. Use JPG, PNG ou MP4.`);
           continue;
         }
-        if (acumulado + file.size > MAX_TOTAL_BYTES) {
+
+        const limiteArquivo = limiteDoTipo(tipo);
+        if (file.size > limiteArquivo) {
           toast.error(
-            `Não dá para incluir "${file.name}": as fotos juntas passariam de ${formatBytes(MAX_TOTAL_BYTES)}. Tire alguma foto antes de adicionar outra.`,
+            `"${file.name}" tem ${formatBytes(file.size)}. O WhatsApp aceita até ${formatBytes(limiteArquivo)} para ${tipo === 'video' ? 'vídeo' : 'foto'}.`,
           );
           continue;
         }
+
+        if (acumulado + file.size > MAX_TOTAL_BYTES) {
+          toast.error(
+            `Não dá para incluir "${file.name}": os arquivos juntos passariam de ${formatBytes(MAX_TOTAL_BYTES)}.`,
+          );
+          continue;
+        }
+
         acumulado += file.size;
         aceitas.push({
           id: novoId(),
+          tipo,
           nome_arquivo: file.name,
-          mime_type: file.type || 'image/jpeg',
+          mime_type: file.type,
           tamanho_bytes: file.size,
           base64: await fileToBase64(file),
-          legenda: '',
         });
       }
+
       if (aceitas.length > 0) onMidiasChange([...midias, ...aceitas]);
     } catch (error) {
-      console.error('Error reading image:', error);
-      toast.error('Não foi possível abrir essa foto. Tente outra.');
+      console.error('Error reading media:', error);
+      toast.error('Não foi possível abrir esse arquivo. Tente outro.');
     } finally {
       setReading(false);
     }
@@ -108,36 +118,37 @@ export default function ComposeStep({
           <label className={bigLabel} htmlFor="info-mensagem">
             Escreva a mensagem
           </label>
+
           <textarea
             id="info-mensagem"
             value={mensagem}
             onChange={e => onMensagemChange(e.target.value)}
             rows={9}
-            className={`${bigInput} resize-y leading-relaxed`}
+            className={`${bigInput} resize-y leading-relaxed ${excedeu ? 'border-danger' : ''}`}
             placeholder={
-              'Olá! A bandeira da conta de luz mudou para vermelha neste mês.\n\nIsso quer dizer que a energia ficou mais cara...'
+              'Olá! A bandeira da conta de luz mudou para *vermelha* neste mês.\n\nIsso quer dizer que a energia ficou mais cara...'
             }
           />
-          <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-            <p className="text-sm text-muted">Escreva como se estivesse falando com uma pessoa só.</p>
-            <span className="text-sm text-faint font-tabular">{mensagem.length} letras</span>
-          </div>
-        </div>
 
-        <div className="flex items-start gap-3 p-4 rounded-lg border-2 border-info/30 bg-info-soft">
-          <Lightbulb className="w-5 h-5 text-info shrink-0 mt-0.5" />
-          <p className="text-base text-muted leading-relaxed">
-            <strong className="font-semibold text-fg">O texto não sai igual para todo mundo.</strong> O
-            sistema muda algumas palavras em cada envio, mantendo o mesmo significado. Isso evita que o
-            WhatsApp entenda como propaganda em massa e bloqueie o número.
-          </p>
+          <div className="flex justify-end mt-2">
+            <span className={`text-sm font-tabular ${excedeu ? 'text-danger font-semibold' : 'text-faint'}`}>
+              {mensagem.length} de {limite} letras
+            </span>
+          </div>
+
+          {excedeu && (
+            <p className="text-base text-danger mt-2">
+              A mensagem passou do limite do WhatsApp
+              {midias.length > 0 && ' para texto que acompanha foto ou vídeo'}. Encurte para conseguir enviar.
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg border-2 border-edge p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h3 className="flex items-center gap-2.5 text-base font-semibold text-fg">
-              <ImageIcon className="w-5 h-5 text-muted" />
-              Fotos
+              <Camera className="w-5 h-5 text-muted" />
+              Foto ou vídeo
               <span className="text-muted font-normal">(opcional)</span>
             </h3>
             <button
@@ -147,12 +158,12 @@ export default function ComposeStep({
               className={chipButton}
             >
               {reading ? <Spinner className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-              {reading ? 'Abrindo...' : 'Escolher fotos'}
+              {reading ? 'Abrindo...' : 'Escolher arquivo'}
             </button>
             <input
               ref={fileInputRef}
               type="file"
-              accept={ACCEPTED}
+              accept={ACCEPT_MIDIA}
               multiple
               onChange={handleFiles}
               className="hidden"
@@ -160,107 +171,57 @@ export default function ComposeStep({
           </div>
 
           {midias.length === 0 ? (
-            <p className="text-base text-muted">Nenhuma foto escolhida. Pode enviar só com texto.</p>
+            <p className="text-base text-muted">
+              Nada escolhido. Pode enviar só com texto. Aceita foto JPG ou PNG (até 5 MB) e vídeo MP4 (até 16
+              MB).
+            </p>
           ) : (
             <div className="space-y-3">
               {midias.map(midia => (
                 <div key={midia.id} className="flex gap-4 items-center">
-                  <img
-                    src={previews[midia.id]}
-                    alt=""
-                    className="shrink-0 w-16 h-16 rounded-lg border border-edge object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <input
-                      type="text"
-                      value={midia.legenda}
-                      onChange={e =>
-                        onMidiasChange(
-                          midias.map(m => (m.id === midia.id ? { ...m, legenda: e.target.value } : m)),
-                        )
-                      }
-                      className={`${bigInput} py-2.5 text-base`}
-                      placeholder="Escrever algo sobre a foto (opcional)"
-                    />
+                  <div className="shrink-0 w-16 h-16 rounded-lg border border-edge overflow-hidden bg-edge/30 relative">
+                    {midia.tipo === 'imagem' ? (
+                      <img src={previews[midia.id]} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <video src={previews[midia.id]} className="w-full h-full object-cover" muted />
+                    )}
+                    {midia.tipo === 'video' && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                        <Video className="w-6 h-6 text-white" />
+                      </span>
+                    )}
                   </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-medium text-fg truncate">{midia.nome_arquivo}</p>
+                    <p className="text-sm text-muted flex items-center gap-1.5 mt-0.5">
+                      {midia.tipo === 'video' ? <Video className="w-4 h-4" /> : <Image className="w-4 h-4" />}
+                      {midia.tipo === 'video' ? 'Vídeo' : 'Foto'} · {formatBytes(midia.tamanho_bytes)}
+                    </p>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => onMidiasChange(midias.filter(m => m.id !== midia.id))}
                     className="shrink-0 p-3 rounded-lg text-danger hover:bg-danger-soft transition-colors"
-                    aria-label={`Tirar a foto ${midia.nome_arquivo}`}
-                    title="Tirar esta foto"
+                    aria-label={`Tirar ${midia.nome_arquivo}`}
+                    title="Tirar este arquivo"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
 
-        <div className="rounded-lg border-2 border-edge p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 className="flex items-center gap-2.5 text-base font-semibold text-fg">
-              <Link2 className="w-5 h-5 text-muted" />
-              Links
-              <span className="text-muted font-normal">(opcional)</span>
-            </h3>
-            <button
-              type="button"
-              onClick={() => onLinksChange([...links, { id: novoId(), titulo: '', url: '' }])}
-              className={chipButton}
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar link
-            </button>
-          </div>
-
-          {links.length === 0 ? (
-            <p className="text-base text-muted">Nenhum link.</p>
-          ) : (
-            <div className="space-y-3">
-              {links.map(link => (
-                <div key={link.id} className="flex gap-3 items-center">
-                  <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-[1fr_1.5fr] gap-2">
-                    <input
-                      type="text"
-                      value={link.titulo}
-                      onChange={e =>
-                        onLinksChange(
-                          links.map(l => (l.id === link.id ? { ...l, titulo: e.target.value } : l)),
-                        )
-                      }
-                      className={`${bigInput} py-2.5 text-base`}
-                      placeholder="Nome do link"
-                    />
-                    <input
-                      type="url"
-                      value={link.url}
-                      onChange={e =>
-                        onLinksChange(links.map(l => (l.id === link.id ? { ...l, url: e.target.value } : l)))
-                      }
-                      className={`${bigInput} py-2.5 text-base`}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onLinksChange(links.filter(l => l.id !== link.id))}
-                    className="shrink-0 p-3 rounded-lg text-danger hover:bg-danger-soft transition-colors"
-                    aria-label="Tirar este link"
-                    title="Tirar este link"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
+              <p className="text-sm text-muted pt-1">
+                A mensagem escrita acima vai junto, como legenda do primeiro arquivo.
+              </p>
             </div>
           )}
         </div>
       </div>
 
       <div className="xl:sticky xl:top-2">
-        <MessagePreview mensagem={mensagem} midias={midias} links={links} />
+        <MessagePreview mensagem={mensagem} midias={midias} />
       </div>
     </div>
   );

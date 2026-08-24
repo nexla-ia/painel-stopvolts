@@ -1,13 +1,13 @@
 import { Profile } from '../../lib/supabase';
-import { MidiaCampanha, LinkCampanha, formatBytes, estimatePayloadBytes } from '../../lib/broadcast';
-import { Users, Image as ImageIcon, Link2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { MidiaCampanha, formatBytes, estimatePayloadBytes } from '../../lib/broadcast';
+import { contarLinks } from '../../lib/whatsapp';
+import { Users, Image as ImageIcon, Link2, AlertTriangle, CheckCircle2, Video } from 'lucide-react';
 import MessagePreview from './MessagePreview';
 
 interface ReviewStepProps {
   titulo: string;
   mensagem: string;
   midias: MidiaCampanha[];
-  links: LinkCampanha[];
   destinatarios: Profile[];
 }
 
@@ -31,8 +31,10 @@ function Resumo({
   );
 }
 
-export default function ReviewStep({ titulo, mensagem, midias, links, destinatarios }: ReviewStepProps) {
-  const linksValidos = links.filter(l => l.url.trim());
+export default function ReviewStep({ titulo, mensagem, midias, destinatarios }: ReviewStepProps) {
+  const fotos = midias.filter(m => m.tipo === 'imagem').length;
+  const videos = midias.filter(m => m.tipo === 'video').length;
+  const links = contarLinks(mensagem);
   const peso = estimatePayloadBytes(midias, destinatarios.length, mensagem);
   const pesado = peso > 8 * 1024 * 1024;
   const primeiroNome = destinatarios[0]?.full_name?.split(' ')[0];
@@ -55,22 +57,15 @@ export default function ReviewStep({ titulo, mensagem, midias, links, destinatar
           <p className="text-xl font-display font-bold text-fg">{titulo.trim() || 'Sem título'}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Resumo
             icon={Users}
             valor={destinatarios.length}
             rotulo={destinatarios.length === 1 ? 'pessoa recebe' : 'pessoas recebem'}
           />
-          <Resumo
-            icon={ImageIcon}
-            valor={midias.length}
-            rotulo={midias.length === 1 ? 'foto anexada' : 'fotos anexadas'}
-          />
-          <Resumo
-            icon={Link2}
-            valor={linksValidos.length}
-            rotulo={linksValidos.length === 1 ? 'link incluído' : 'links incluídos'}
-          />
+          <Resumo icon={ImageIcon} valor={fotos} rotulo={fotos === 1 ? 'foto' : 'fotos'} />
+          <Resumo icon={Video} valor={videos} rotulo={videos === 1 ? 'vídeo' : 'vídeos'} />
+          <Resumo icon={Link2} valor={links} rotulo={links === 1 ? 'link no texto' : 'links no texto'} />
         </div>
 
         <div className="rounded-lg border-2 border-edge overflow-hidden">
@@ -98,12 +93,7 @@ export default function ReviewStep({ titulo, mensagem, midias, links, destinatar
       </div>
 
       <div className="xl:sticky xl:top-2">
-        <MessagePreview
-          mensagem={mensagem}
-          midias={midias}
-          links={links}
-          nomeExemplo={primeiroNome || 'Maria'}
-        />
+        <MessagePreview mensagem={mensagem} midias={midias} nomeExemplo={primeiroNome || 'Maria'} />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { Informativo, TABELA_AUSENTE } from '../../lib/informativos';
 import {
   Users,
   Image as ImageIcon,
-  Link2,
+  Video,
   ChevronDown,
   CheckCircle2,
   XCircle,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Badge from '../ui/Badge';
 import Skeleton from '../ui/Skeleton';
+import WhatsAppText from './WhatsAppText';
 import { secondaryButton } from './ui';
 
 interface HistoryPanelProps {
@@ -126,30 +127,21 @@ export default function HistoryPanel({ informativos, loading, erro, onReenviar }
               <div className="border-t border-edge p-5 space-y-4">
                 <div>
                   <p className="text-sm uppercase tracking-wider text-faint mb-2">Mensagem enviada</p>
-                  <p className="text-base text-fg whitespace-pre-wrap leading-relaxed">{info.mensagem}</p>
+                  <WhatsAppText texto={info.mensagem} className="text-base text-fg leading-relaxed" />
                 </div>
 
                 {info.midias.length > 0 && (
                   <div>
-                    <p className="text-sm uppercase tracking-wider text-faint mb-2">
-                      <ImageIcon className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
-                      Fotos
-                    </p>
-                    <p className="text-base text-muted">{info.midias.map(m => m.nome_arquivo).join(' · ')}</p>
-                  </div>
-                )}
-
-                {info.links.length > 0 && (
-                  <div>
-                    <p className="text-sm uppercase tracking-wider text-faint mb-2">
-                      <Link2 className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
-                      Links
-                    </p>
+                    <p className="text-sm uppercase tracking-wider text-faint mb-2">Arquivos</p>
                     <div className="space-y-1">
-                      {info.links.map((l, i) => (
-                        <p key={i} className="text-base break-all">
-                          {l.titulo && <span className="text-fg">{l.titulo}: </span>}
-                          <span className="text-info">{l.url}</span>
+                      {info.midias.map((m, i) => (
+                        <p key={i} className="text-base text-muted flex items-center gap-2">
+                          {m.tipo === 'video' ? (
+                            <Video className="w-4 h-4 shrink-0" />
+                          ) : (
+                            <ImageIcon className="w-4 h-4 shrink-0" />
+                          )}
+                          {m.nome_arquivo}
                         </p>
                       ))}
                     </div>

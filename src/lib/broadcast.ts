@@ -1,4 +1,5 @@
 import { Profile } from './supabase';
+import { TipoMidia } from './whatsapp';
 
 /**
  * Webhook do n8n que recebe a campanha. Pode ser trocado por ambiente sem
@@ -21,23 +22,18 @@ export const MENSAGEM_BASE_INSTRUCAO =
   'texto idêntico para todos faz a Meta marcar o número como spam e banir a conta.';
 
 /**
- * Foto da campanha. A imagem não é hospedada em lugar nenhum: viaja em base64
- * dentro do próprio payload, e o n8n converte para binário na hora de enviar.
+ * Foto ou vídeo do informativo. O arquivo não é hospedado em lugar nenhum:
+ * viaja em base64 dentro do próprio payload, e o n8n converte para binário na
+ * hora de enviar ao WhatsApp.
  */
 export interface MidiaCampanha {
   id: string;
+  tipo: TipoMidia;
   nome_arquivo: string;
   mime_type: string;
   tamanho_bytes: number;
   /** Base64 puro, sem o prefixo `data:`. É o formato que o n8n consome direto. */
   base64: string;
-  legenda: string;
-}
-
-export interface LinkCampanha {
-  id: string;
-  titulo: string;
-  url: string;
 }
 
 export interface ContatoPayload {
@@ -56,16 +52,21 @@ export interface BroadcastPayload {
   enviado_por: string;
   campanha: {
     titulo: string;
+    /**
+     * Texto no formato do WhatsApp: *negrito*, _itálico_, ~riscado~,
+     * ```mono``` e links escritos direto no meio do texto.
+     */
     mensagem_base: string;
+    /** 'texto' quando não há mídia; senão, o tipo da primeira mídia. */
+    tipo_envio: 'texto' | TipoMidia;
     instrucao_antibanimento: string;
     midias: {
+      tipo: TipoMidia;
       nome_arquivo: string;
       mime_type: string;
       tamanho_bytes: number;
-      legenda: string;
       base64: string;
     }[];
-    links: { titulo: string; url: string }[];
   };
   total_contatos: number;
   contatos: ContatoPayload[];
@@ -109,12 +110,12 @@ export function buildBroadcastPayload(params: {
   titulo: string;
   mensagem: string;
   midias: MidiaCampanha[];
-  links: LinkCampanha[];
   contatos: Profile[];
   enviadoPor: string;
   agora: Date;
 }): BroadcastPayload {
-  const { titulo, mensagem, midias, links, contatos, enviadoPor, agora } = params;
+  const { titulo, mensagem, midias, contatos, enviadoPor, agora } = params;
+  const midiasValidas = midias.filter(m => m.base64);
 
   return {
     enviado_em: agora.toISOString(),
@@ -122,17 +123,15 @@ export function buildBroadcastPayload(params: {
     campanha: {
       titulo: titulo.trim(),
       mensagem_base: mensagem.trim(),
+      tipo_envio: midiasValidas[0]?.tipo ?? 'texto',
       instrucao_antibanimento: MENSAGEM_BASE_INSTRUCAO,
-      midias: midias
-        .filter(m => m.base64)
-        .map(m => ({
-          nome_arquivo: m.nome_arquivo,
-          mime_type: m.mime_type,
-          tamanho_bytes: m.tamanho_bytes,
-          legenda: m.legenda.trim(),
-          base64: m.base64,
-        })),
-      links: links.filter(l => l.url.trim()).map(l => ({ titulo: l.titulo.trim(), url: l.url.trim() })),
+      midias: midiasValidas.map(m => ({
+        tipo: m.tipo,
+        nome_arquivo: m.nome_arquivo,
+        mime_type: m.mime_type,
+        tamanho_bytes: m.tamanho_bytes,
+        base64: m.base64,
+      })),
     },
     total_contatos: contatos.length,
     contatos: contatos.flatMap(user => {
@@ -167,9 +166,6 @@ export function fileToBase64(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
-
-/** Data URI para exibir a miniatura sem guardar uma segunda cópia da imagem. */
-export const midiaPreview = (midia: MidiaCampanha) => `data:${midia.mime_type};base64,${midia.base64}`;
 
 /**
  * Peso aproximado do POST. Base64 infla o arquivo em cerca de 33%, então uma

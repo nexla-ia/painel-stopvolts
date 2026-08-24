@@ -2,13 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase, Profile, PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import {
-  MidiaCampanha,
-  LinkCampanha,
-  buildBroadcastPayload,
-  sendBroadcast,
-  podeReceber,
-} from '../lib/broadcast';
+import { MidiaCampanha, buildBroadcastPayload, sendBroadcast, podeReceber } from '../lib/broadcast';
 import { Informativo, listarInformativos, salvarInformativo, TABELA_AUSENTE } from '../lib/informativos';
 import { ArrowLeft, ArrowRight, Send, Check, PenLine, Users, ClipboardCheck, History } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
@@ -43,7 +37,6 @@ export default function Broadcast() {
   const [titulo, setTitulo] = useState('');
   const [mensagem, setMensagem] = useState('');
   const [midias, setMidias] = useState<MidiaCampanha[]>([]);
-  const [links, setLinks] = useState<LinkCampanha[]>([]);
 
   const [informativos, setInformativos] = useState<Informativo[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(true);
@@ -102,12 +95,11 @@ export default function Broadcast() {
         titulo,
         mensagem,
         midias,
-        links,
         contatos: destinatarios,
         enviadoPor: profile?.email ?? 'desconhecido',
         agora: new Date(),
       }),
-    [titulo, mensagem, midias, links, destinatarios, profile?.email],
+    [titulo, mensagem, midias, destinatarios, profile?.email],
   );
 
   const podeAvancar = passo === 1 ? mensagem.trim().length > 0 : destinatarios.length > 0;
@@ -116,7 +108,6 @@ export default function Broadcast() {
     setTitulo('');
     setMensagem('');
     setMidias([]);
-    setLinks([]);
     setSelectedIds(new Set(users.filter(podeReceber).map(u => u.id)));
     setPasso(1);
   };
@@ -132,7 +123,6 @@ export default function Broadcast() {
         titulo,
         mensagem,
         midias,
-        links,
         contatos: payload.contatos,
         status: resultado.ok ? 'enviado' : 'falhou',
         erro: resultado.ok ? null : resultado.detalhe,
@@ -166,7 +156,6 @@ export default function Broadcast() {
   const usarComoBase = (info: Informativo) => {
     setTitulo(info.titulo);
     setMensagem(info.mensagem);
-    setLinks(info.links.map((l, i) => ({ id: `${Date.now()}-${i}`, titulo: l.titulo, url: l.url })));
     // As fotos não voltam: o histórico guarda só o nome dos arquivos, não a
     // imagem em si. Quem for reenviar escolhe as fotos de novo.
     setMidias([]);
@@ -285,8 +274,6 @@ export default function Broadcast() {
                 onMensagemChange={setMensagem}
                 midias={midias}
                 onMidiasChange={setMidias}
-                links={links}
-                onLinksChange={setLinks}
               />
             )}
 
@@ -295,13 +282,7 @@ export default function Broadcast() {
             )}
 
             {passo === 3 && (
-              <ReviewStep
-                titulo={titulo}
-                mensagem={mensagem}
-                midias={midias}
-                links={links}
-                destinatarios={destinatarios}
-              />
+              <ReviewStep titulo={titulo} mensagem={mensagem} midias={midias} destinatarios={destinatarios} />
             )}
           </Panel>
 
