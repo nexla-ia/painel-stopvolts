@@ -1,5 +1,6 @@
-import { MidiaCampanha, LinkCampanha, midiaPreview } from '../../lib/broadcast';
+import { MidiaCampanha, LinkCampanha } from '../../lib/broadcast';
 import { Image as ImageIcon } from 'lucide-react';
+import { useMidiaPreviews } from './useMidiaPreviews';
 
 interface MessagePreviewProps {
   mensagem: string;
@@ -19,6 +20,7 @@ export default function MessagePreview({
   links,
   nomeExemplo = 'Maria',
 }: MessagePreviewProps) {
+  const previews = useMidiaPreviews(midias);
   const linksValidos = links.filter(l => l.url.trim());
   const vazio = !mensagem.trim() && midias.length === 0 && linksValidos.length === 0;
 
@@ -40,7 +42,7 @@ export default function MessagePreview({
                 {midias.slice(0, 4).map(midia => (
                   <img
                     key={midia.id}
-                    src={midiaPreview(midia)}
+                    src={previews[midia.id]}
                     alt={midia.legenda || midia.nome_arquivo}
                     className="w-full aspect-video object-cover"
                   />

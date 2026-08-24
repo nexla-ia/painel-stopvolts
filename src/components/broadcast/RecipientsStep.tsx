@@ -129,19 +129,22 @@ export default function RecipientsStep({ users, selectedIds, onChange }: Recipie
                     marcado ? 'bg-volt-soft' : 'hover:bg-edge/20'
                   }`}
                 >
+                  {/* A caixa real fica escondida, mas `peer` repassa o foco do
+                      teclado para o quadrado visível — sem isso, quem navega por
+                      Tab não enxerga onde está. */}
+                  <input
+                    type="checkbox"
+                    checked={marcado}
+                    onChange={() => alternar(user.id)}
+                    className="peer sr-only"
+                  />
                   <span
-                    className={`shrink-0 w-7 h-7 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    className={`shrink-0 w-7 h-7 rounded-md border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-4 peer-focus-visible:ring-volt/40 ${
                       marcado ? 'bg-volt border-volt' : 'border-edge-strong bg-ink'
                     }`}
                   >
                     {marcado && <Check className="w-5 h-5 text-volt-ink" strokeWidth={3} />}
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={marcado}
-                    onChange={() => alternar(user.id)}
-                    className="sr-only"
-                  />
                   <span className="flex-1 min-w-0">
                     <span className="block text-base font-medium text-fg truncate">
                       {user.full_name || 'Sem nome'}

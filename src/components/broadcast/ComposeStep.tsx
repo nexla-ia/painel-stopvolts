@@ -1,5 +1,6 @@
 import { ChangeEvent, useRef, useState } from 'react';
-import { MidiaCampanha, LinkCampanha, fileToBase64, midiaPreview, formatBytes } from '../../lib/broadcast';
+import { MidiaCampanha, LinkCampanha, fileToBase64, formatBytes } from '../../lib/broadcast';
+import { useMidiaPreviews } from './useMidiaPreviews';
 import { useToast } from '../../contexts/ToastContext';
 import { Image as ImageIcon, Link2, Plus, Trash2, Camera, Lightbulb } from 'lucide-react';
 import Spinner from '../ui/Spinner';
@@ -7,6 +8,12 @@ import MessagePreview from './MessagePreview';
 import { bigInput, bigLabel, helpText, chipButton } from './ui';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
+/**
+ * Teto do conjunto de fotos. As imagens seguem em base64 dentro do JSON, então
+ * passar disso costuma render recusa do servidor — melhor barrar aqui, com uma
+ * mensagem clara, do que deixar o envio falhar sem explicação depois.
+ */
+const MAX_TOTAL_BYTES = 12 * 1024 * 1024;
 const ACCEPTED = 'image/jpeg,image/png,image/webp,image/gif';
 
 interface ComposeStepProps {
@@ -33,6 +40,7 @@ export default function ComposeStep({
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
+  const previews = useMidiaPreviews(midias);
 
   const novoId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -44,11 +52,20 @@ export default function ComposeStep({
     setReading(true);
     try {
       const aceitas: MidiaCampanha[] = [];
+      let acumulado = midias.reduce((sum, m) => sum + m.tamanho_bytes, 0);
+
       for (const file of files) {
         if (file.size > MAX_FILE_BYTES) {
           toast.error(`A foto "${file.name}" é muito grande (${formatBytes(file.size)}). O limite é 5 MB.`);
           continue;
         }
+        if (acumulado + file.size > MAX_TOTAL_BYTES) {
+          toast.error(
+            `Não dá para incluir "${file.name}": as fotos juntas passariam de ${formatBytes(MAX_TOTAL_BYTES)}. Tire alguma foto antes de adicionar outra.`,
+          );
+          continue;
+        }
+        acumulado += file.size;
         aceitas.push({
           id: novoId(),
           nome_arquivo: file.name,
@@ -149,7 +166,7 @@ export default function ComposeStep({
               {midias.map(midia => (
                 <div key={midia.id} className="flex gap-4 items-center">
                   <img
-                    src={midiaPreview(midia)}
+                    src={previews[midia.id]}
                     alt=""
                     className="shrink-0 w-16 h-16 rounded-lg border border-edge object-cover"
                   />
