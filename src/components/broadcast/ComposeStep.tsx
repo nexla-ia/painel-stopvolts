@@ -1,6 +1,7 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import { MidiaCampanha, fileToBase64, formatBytes } from '../../lib/broadcast';
 import { ACCEPT_MIDIA, limiteDeTexto, limiteDoTipo, tipoDoMime } from '../../lib/whatsapp';
+import { criarMiniatura } from '../../lib/miniatura';
 import { useMidiaPreviews } from './useMidiaPreviews';
 import { useToast } from '../../contexts/ToastContext';
 import { Trash2, Camera, Video, Image } from 'lucide-react';
@@ -82,6 +83,7 @@ export default function ComposeStep({
           mime_type: file.type,
           tamanho_bytes: file.size,
           base64: await fileToBase64(file),
+          miniatura: await criarMiniatura(file, tipo),
         });
       }
 

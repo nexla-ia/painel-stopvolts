@@ -14,7 +14,14 @@ export interface Informativo {
   id: string;
   titulo: string;
   mensagem: string;
-  midias: { tipo: TipoMidia; nome_arquivo: string; mime_type: string; tamanho_bytes: number }[];
+  midias: {
+    tipo: TipoMidia;
+    nome_arquivo: string;
+    mime_type: string;
+    tamanho_bytes: number;
+    /** Miniatura JPEG em base64, para a tela mostrar o que foi enviado. */
+    miniatura?: string | null;
+  }[];
   total_contatos: number;
   contatos: { nome: string; telefone: string }[];
   status: 'enviado' | 'falhou';
@@ -62,11 +69,14 @@ export async function salvarInformativo(params: {
     {
       titulo: params.titulo.trim() || 'Sem título',
       mensagem: params.mensagem.trim(),
+      // Guarda a miniatura, nunca o base64 cheio: o arquivo original tem
+      // megabytes e encheria a tabela em poucos envios.
       midias: params.midias.map(m => ({
         tipo: m.tipo,
         nome_arquivo: m.nome_arquivo,
         mime_type: m.mime_type,
         tamanho_bytes: m.tamanho_bytes,
+        miniatura: m.miniatura,
       })),
       total_contatos: params.contatos.length,
       contatos: params.contatos.map(c => ({ nome: c.nome, telefone: c.telefone })),

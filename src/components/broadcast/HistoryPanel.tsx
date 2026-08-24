@@ -132,17 +132,40 @@ export default function HistoryPanel({ informativos, loading, erro, onReenviar }
 
                 {info.midias.length > 0 && (
                   <div>
-                    <p className="text-sm uppercase tracking-wider text-faint mb-2">Arquivos</p>
-                    <div className="space-y-1">
+                    <p className="text-sm uppercase tracking-wider text-faint mb-2">
+                      {info.midias.length === 1 ? 'Arquivo enviado' : 'Arquivos enviados'}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
                       {info.midias.map((m, i) => (
-                        <p key={i} className="text-base text-muted flex items-center gap-2">
-                          {m.tipo === 'video' ? (
-                            <Video className="w-4 h-4 shrink-0" />
-                          ) : (
-                            <ImageIcon className="w-4 h-4 shrink-0" />
-                          )}
-                          {m.nome_arquivo}
-                        </p>
+                        <figure key={i} className="w-32">
+                          <div className="relative w-32 h-32 rounded-lg border-2 border-edge overflow-hidden bg-edge/30">
+                            {m.miniatura ? (
+                              <img
+                                src={`data:image/jpeg;base64,${m.miniatura}`}
+                                alt={m.nome_arquivo}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="w-full h-full flex items-center justify-center">
+                                {m.tipo === 'video' ? (
+                                  <Video className="w-8 h-8 text-faint" />
+                                ) : (
+                                  <ImageIcon className="w-8 h-8 text-faint" />
+                                )}
+                              </span>
+                            )}
+
+                            {m.tipo === 'video' && (
+                              <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/65 text-white text-[11px]">
+                                <Video className="w-3 h-3" />
+                                Vídeo
+                              </span>
+                            )}
+                          </div>
+                          <figcaption className="text-xs text-muted mt-1.5 truncate" title={m.nome_arquivo}>
+                            {m.nome_arquivo}
+                          </figcaption>
+                        </figure>
                       ))}
                     </div>
                   </div>

@@ -34,6 +34,12 @@ export interface MidiaCampanha {
   tamanho_bytes: number;
   /** Base64 puro, sem o prefixo `data:`. É o formato que o n8n consome direto. */
   base64: string;
+  /**
+   * Miniatura JPEG em base64, gerada no navegador. Serve só para o histórico
+   * conseguir mostrar o que foi enviado — não vai no envio ao n8n, que recebe
+   * o arquivo inteiro em `base64`.
+   */
+  miniatura: string | null;
 }
 
 export interface ContatoPayload {
