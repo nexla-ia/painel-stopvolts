@@ -12,11 +12,13 @@ import {
   Moon,
   Sun,
   DollarSign,
+  Send,
 } from 'lucide-react';
 
 const navigation = [
   { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
   { to: '/users', label: 'Usuários', icon: Users, end: false },
+  { to: '/broadcast', label: 'Envio de Informações', icon: Send, end: false },
   { to: '/promo-codes', label: 'Códigos Promocionais', icon: Tag, end: false },
   { to: '/tariffs', label: 'Tarifas', icon: DollarSign, end: false },
 ];
