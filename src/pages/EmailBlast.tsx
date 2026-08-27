@@ -8,6 +8,8 @@ import {
   ASSUNTO_PADRAO,
   ModoConteudo,
   aplicarVariaveis,
+  aplicarVariaveisPrevia,
+  variaveisVazias,
   buildEmailPayload,
   htmlParaTexto,
   montarHtml,
@@ -113,19 +115,44 @@ export default function EmailBlast() {
 
   // Pessoa de exemplo para a prévia do passo 1
   const exemplo = destinatarios[0] ?? users.find(podeReceberEmail) ?? null;
-  const htmlPrevia = useMemo(
-    () =>
-      exemplo
-        ? htmlDe(exemplo)
-        : '<p style="font-family:sans-serif;padding:24px;color:#888">Escreva a mensagem para ver a prévia.</p>',
-    [exemplo, htmlDe],
-  );
+
+  /**
+   * Prévia do passo 1, com dados de exemplo no lugar dos campos vazios.
+   *
+   * Ali a pessoa está julgando o formato do texto, não conferindo o cadastro.
+   * Mostrar "localizado em /." porque a conta não tem cidade atrapalha essa
+   * leitura. O passo 3 e o envio continuam com o dado real.
+   */
+  const htmlPrevia = useMemo(() => {
+    if (modo === 'html') return aplicarVariaveisPrevia(htmlCru, exemplo);
+    return montarHtml({
+      ...conteudo,
+      corpo: aplicarVariaveisPrevia(conteudo.corpo, exemplo),
+      botaoTexto: aplicarVariaveisPrevia(conteudo.botaoTexto, exemplo),
+      rodape: aplicarVariaveisPrevia(conteudo.rodape, exemplo),
+    });
+  }, [modo, htmlCru, conteudo, exemplo]);
+
+  const assuntoPrevia = useMemo(() => aplicarVariaveisPrevia(assunto, exemplo), [assunto, exemplo]);
 
   // Cada pessoa leva uma cópia do HTML: o envio cresce com a lista.
   const peso = useMemo(() => {
     if (destinatarios.length === 0 || !exemplo) return 0;
     return htmlDe(exemplo).length * destinatarios.length;
   }, [destinatarios.length, exemplo, htmlDe]);
+
+  /**
+   * Contas em que alguma variável usada no texto ficaria em branco.
+   *
+   * Vale avisar antes de disparar: sem isso alguém recebe "localizado em /."
+   * porque não tem cidade cadastrada, e só se descobre depois do envio.
+   */
+  const comDadoFaltando = useMemo(() => {
+    const textoUsado = modo === 'html' ? htmlCru : `${assunto} ${conteudo.corpo} ${conteudo.botaoTexto}`;
+    return destinatarios
+      .map(user => ({ user, faltando: variaveisVazias(textoUsado, user) }))
+      .filter(r => r.faltando.length > 0);
+  }, [modo, htmlCru, assunto, conteudo.corpo, conteudo.botaoTexto, destinatarios]);
 
   const conteudoPreenchido = modo === 'html' ? htmlCru.trim().length > 0 : conteudo.corpo.trim().length > 0;
   const podeAvancar =
@@ -242,6 +269,7 @@ export default function EmailBlast() {
             onHtmlCruChange={setHtmlCru}
             exemplo={exemplo}
             htmlPrevia={htmlPrevia}
+            assuntoPrevia={assuntoPrevia}
           />
         )}
 
@@ -256,6 +284,7 @@ export default function EmailBlast() {
             htmlDe={htmlDe}
             destinatarios={destinatarios}
             peso={peso}
+            comDadoFaltando={comDadoFaltando}
           />
         )}
       </Panel>

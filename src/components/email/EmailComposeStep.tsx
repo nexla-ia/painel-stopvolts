@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Profile } from '../../lib/supabase';
-import { ConteudoEmail, ModoConteudo, aplicarVariaveis, primeiroNome } from '../../lib/email';
+import { ConteudoEmail, ModoConteudo, primeiroNome } from '../../lib/email';
 import { PenLine, Code2, Eye, Pencil } from 'lucide-react';
 import EmailCanvas from './EmailCanvas';
 import { bigInput, bigLabel, helpText } from '../broadcast/ui';
@@ -18,6 +18,8 @@ interface EmailComposeStepProps {
   exemplo: Profile | null;
   /** HTML já personalizado para o exemplo. */
   htmlPrevia: string;
+  /** Assunto com os dados de exemplo aplicados. */
+  assuntoPrevia: string;
 }
 
 export default function EmailComposeStep({
@@ -31,11 +33,12 @@ export default function EmailComposeStep({
   onHtmlCruChange,
   exemplo,
   htmlPrevia,
+  assuntoPrevia,
 }: EmailComposeStepProps) {
   const [vendoResultado, setVendoResultado] = useState(false);
 
   const nomeExemplo = primeiroNome(exemplo?.full_name ?? null) || 'Maria';
-  const assuntoFinal = exemplo ? aplicarVariaveis(assunto, exemplo) : assunto;
+  const assuntoFinal = assuntoPrevia;
 
   const abaClass = (ativa: boolean) =>
     `flex items-center gap-2.5 px-5 py-3 text-base font-semibold rounded-lg transition-colors ${

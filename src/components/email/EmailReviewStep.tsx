@@ -11,6 +11,8 @@ interface EmailReviewStepProps {
   destinatarios: Profile[];
   /** Tamanho aproximado do envio, em bytes. */
   peso: number;
+  /** Contas em que alguma variável do texto ficaria vazia. */
+  comDadoFaltando: { user: Profile; faltando: string[] }[];
 }
 
 export default function EmailReviewStep({
@@ -19,6 +21,7 @@ export default function EmailReviewStep({
   htmlDe,
   destinatarios,
   peso,
+  comDadoFaltando,
 }: EmailReviewStepProps) {
   const [indice, setIndice] = useState(0);
   const [busca, setBusca] = useState('');
@@ -58,6 +61,39 @@ export default function EmailReviewStep({
           </p>
         </div>
       </div>
+
+      {comDadoFaltando.length > 0 && (
+        <div className="flex items-start gap-3.5 p-4 rounded-lg border-2 border-warning/40 bg-warning-soft">
+          <AlertTriangle className="w-6 h-6 text-warning shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-base text-fg">
+              <strong className="font-semibold">
+                {comDadoFaltando.length} {comDadoFaltando.length === 1 ? 'pessoa não tem' : 'pessoas não têm'}{' '}
+                um dado que o texto usa.
+              </strong>{' '}
+              <span className="text-muted">
+                Onde falta o dado, a frase chega com um espaço em branco. Clique no nome para ver como fica.
+              </span>
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+              {comDadoFaltando.slice(0, 6).map(({ user, faltando }) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => setIndice(destinatarios.findIndex(x => x.id === user.id))}
+                  className="text-sm text-muted hover:text-fg underline decoration-dotted transition-colors"
+                >
+                  {user.full_name || user.email}{' '}
+                  <span className="text-faint">(sem {faltando.join(', ')})</span>
+                </button>
+              ))}
+              {comDadoFaltando.length > 6 && (
+                <span className="text-sm text-faint">e mais {comDadoFaltando.length - 6}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Prévia em largura cheia: 480px do e-mail + margem não cabem numa coluna estreita */}
       <div className="rounded-xl border-2 border-edge overflow-hidden">

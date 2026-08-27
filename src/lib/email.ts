@@ -169,6 +169,39 @@ export function aplicarVariaveis(texto: string, user: Profile) {
     .replace(/\{\{\s*estado\s*\}\}/gi, user.state || '');
 }
 
+/** Valores usados na prévia quando a conta de exemplo não tem o dado. */
+const EXEMPLO = { nome: 'Maria Silva Santos', cidade: 'Curitiba', estado: 'PR' };
+
+/**
+ * Versão da substituição para a prévia.
+ *
+ * Campo vazio vira dado de exemplo em vez de buraco. Sem isso, uma conta sem
+ * cidade cadastrada produzia "localizado em /." na tela, e quem estava
+ * escrevendo não conseguia julgar como a frase fica para quem tem o dado.
+ * O envio de verdade continua usando `aplicarVariaveis`.
+ */
+export function aplicarVariaveisPrevia(texto: string, user: Profile | null) {
+  const nome = user?.full_name?.trim() || EXEMPLO.nome;
+  return texto
+    .replace(/\{\{\s*nome\s*\}\}/gi, nome)
+    .replace(/\{\{\s*primeiro_nome\s*\}\}/gi, primeiroNome(nome))
+    .replace(/\{\{\s*email\s*\}\}/gi, user?.email || 'maria@exemplo.com')
+    .replace(/\{\{\s*cidade\s*\}\}/gi, user?.city || EXEMPLO.cidade)
+    .replace(/\{\{\s*estado\s*\}\}/gi, user?.state || EXEMPLO.estado);
+}
+
+/** Variáveis usadas no texto que ficariam vazias para esta pessoa. */
+export function variaveisVazias(texto: string, user: Profile): string[] {
+  const faltando: string[] = [];
+  const usa = (chave: string) => new RegExp(`\\{\\{\\s*${chave}\\s*\\}\\}`, 'i').test(texto);
+
+  if ((usa('nome') || usa('primeiro_nome')) && !user.full_name?.trim()) faltando.push('nome');
+  if (usa('cidade') && !user.city) faltando.push('cidade');
+  if (usa('estado') && !user.state) faltando.push('estado');
+
+  return faltando;
+}
+
 /**
  * Monta o HTML final do e-mail.
  *
