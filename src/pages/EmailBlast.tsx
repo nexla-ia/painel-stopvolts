@@ -44,6 +44,24 @@ export default function EmailBlast() {
   const [modo, setModo] = useState<ModoConteudo>('escrever');
   const [conteudo, setConteudo] = useState<ConteudoEmail>(CONTEUDO_PADRAO);
   const [htmlCru, setHtmlCru] = useState('');
+  /**
+   * O título do cartão acompanha o assunto até alguém editá-lo à mão.
+   *
+   * Na prática os dois quase sempre dizem a mesma coisa, e digitar duas vezes
+   * é trabalho à toa. A partir do momento em que o título é alterado no
+   * cartão, ele passa a ter vida própria e o assunto para de sobrescrevê-lo.
+   */
+  const [tituloEditado, setTituloEditado] = useState(false);
+
+  const alterarAssunto = (valor: string) => {
+    setAssunto(valor);
+    if (!tituloEditado) setConteudo(c => ({ ...c, titulo: valor }));
+  };
+
+  const alterarConteudo = (novo: ConteudoEmail) => {
+    if (novo.titulo !== conteudo.titulo) setTituloEditado(true);
+    setConteudo(novo);
+  };
 
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -159,6 +177,7 @@ export default function EmailBlast() {
         setTitulo('');
         setAssunto('');
         setConteudo(CONTEUDO_PADRAO);
+        setTituloEditado(false);
         setHtmlCru('');
         setPasso(1);
       } else {
@@ -238,11 +257,11 @@ export default function EmailBlast() {
             titulo={titulo}
             onTituloChange={setTitulo}
             assunto={assunto}
-            onAssuntoChange={setAssunto}
+            onAssuntoChange={alterarAssunto}
             modo={modo}
             onModoChange={setModo}
             conteudo={conteudo}
-            onConteudoChange={setConteudo}
+            onConteudoChange={alterarConteudo}
             htmlCru={htmlCru}
             onHtmlCruChange={setHtmlCru}
             exemplo={exemplo}

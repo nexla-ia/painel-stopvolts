@@ -25,14 +25,31 @@ export const CORES_EMAIL = {
 } as const;
 
 /**
- * Tons de destaque. O verde é o padrão do produto; os outros existem para um
+ * Logo do aplicativo, servido pela loja.
+ *
+ * Fixo de propósito: e-mail exige imagem hospedada em endereço público e
+ * estável, e este já é o ícone que o cliente vê no celular.
+ */
+export const LOGO_URL =
+  'https://play-lh.googleusercontent.com/YtWPrwEgbMro6zz1En934OkL_Q12spPBEADv0a99f8H9PIOsSxBM2j7ysXStLJodq3ucpsAq9gN5Sosxt_nH8wk=w480-h960';
+
+/**
+ * Tons de destaque. O verde é o padrão do produto; os demais existem para um
  * aviso de cobrança ou de urgência não precisar sair do mesmo desenho.
+ * As cores seguem a mesma família da referência (nível 500 e 100).
  */
 export const TONS = {
   verde: { cor: '#22C55E', suave: '#DCFCE7', sombra: 'rgba(34,197,94,0.3)', rotulo: 'Verde' },
+  esmeralda: { cor: '#10B981', suave: '#D1FAE5', sombra: 'rgba(16,185,129,0.3)', rotulo: 'Esmeralda' },
+  ciano: { cor: '#06B6D4', suave: '#CFFAFE', sombra: 'rgba(6,182,212,0.3)', rotulo: 'Ciano' },
   azul: { cor: '#3B82F6', suave: '#DBEAFE', sombra: 'rgba(59,130,246,0.3)', rotulo: 'Azul' },
-  ambar: { cor: '#F59E0B', suave: '#FEF3C7', sombra: 'rgba(245,158,11,0.3)', rotulo: 'Âmbar' },
+  indigo: { cor: '#6366F1', suave: '#E0E7FF', sombra: 'rgba(99,102,241,0.3)', rotulo: 'Índigo' },
+  roxo: { cor: '#8B5CF6', suave: '#EDE9FE', sombra: 'rgba(139,92,246,0.3)', rotulo: 'Roxo' },
+  rosa: { cor: '#EC4899', suave: '#FCE7F3', sombra: 'rgba(236,72,153,0.3)', rotulo: 'Rosa' },
   vermelho: { cor: '#EF4444', suave: '#FEE2E2', sombra: 'rgba(239,68,68,0.3)', rotulo: 'Vermelho' },
+  laranja: { cor: '#F97316', suave: '#FFEDD5', sombra: 'rgba(249,115,22,0.3)', rotulo: 'Laranja' },
+  ambar: { cor: '#F59E0B', suave: '#FEF3C7', sombra: 'rgba(245,158,11,0.3)', rotulo: 'Âmbar' },
+  grafite: { cor: '#475569', suave: '#F1F5F9', sombra: 'rgba(71,85,105,0.3)', rotulo: 'Grafite' },
 } as const;
 
 export type TomEmail = keyof typeof TONS;
@@ -44,8 +61,6 @@ export interface ConteudoEmail {
   botaoTexto: string;
   botaoUrl: string;
   rodape: string;
-  /** URL pública do logo. Vazio cai no bloco com a inicial. */
-  logoUrl: string;
 }
 
 export const CONTEUDO_PADRAO: ConteudoEmail = {
@@ -56,7 +71,6 @@ export const CONTEUDO_PADRAO: ConteudoEmail = {
   botaoTexto: 'Ver meu consumo',
   botaoUrl: '',
   rodape: 'Enviado automaticamente por StopVolts',
-  logoUrl: '',
 };
 
 export interface DestinatarioEmail {
@@ -151,7 +165,7 @@ export function aplicarVariaveis(texto: string, user: Profile) {
  * cantos arredondados ficam; onde não há suporte, degradam sem quebrar nada.
  */
 export function montarHtml(conteudo: ConteudoEmail) {
-  const { tom, titulo, corpo, botaoTexto, botaoUrl, rodape, logoUrl } = conteudo;
+  const { tom, titulo, corpo, botaoTexto, botaoUrl, rodape } = conteudo;
   const t = TONS[tom] ?? TONS.verde;
   const c = CORES_EMAIL;
 
@@ -166,9 +180,7 @@ export function montarHtml(conteudo: ConteudoEmail) {
     })
     .join('');
 
-  const blocoLogo = logoUrl.trim()
-    ? `<img src="${escaparHtml(logoUrl.trim())}" alt="StopVolts" width="48" height="48" style="border-radius:10px;display:block;margin:0 auto 12px;border:0;" />`
-    : `<div style="width:48px;height:48px;line-height:48px;background:${t.cor};border-radius:10px;margin:0 auto 12px;text-align:center;"><span style="color:#ffffff;font-size:24px;font-weight:700;">S</span></div>`;
+  const blocoLogo = `<img src="${LOGO_URL}" alt="StopVolts" width="48" height="48" style="width:48px;height:48px;border-radius:10px;display:block;margin:0 auto 12px;border:0;" />`;
 
   const blocoTitulo = titulo.trim()
     ? `<h2 style="color:${c.titulo};text-align:center;margin:0 0 16px;font-size:21px;font-weight:700;">${escaparHtml(titulo.trim())}</h2>`

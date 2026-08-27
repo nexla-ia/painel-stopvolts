@@ -82,7 +82,7 @@ export default function EmailComposeStep({
                 Chega assim para {nomeExemplo}: <strong className="text-fg">{assuntoFinal}</strong>
               </>
             ) : (
-              'É a primeira coisa que aparece. Curto e direto funciona melhor.'
+              'Também vira o título dentro do e-mail, até você mudar o título por lá.'
             )}
           </p>
         </div>
