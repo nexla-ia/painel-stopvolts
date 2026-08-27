@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Profile } from '../../lib/supabase';
 import { ConteudoEmail, ModoConteudo, aplicarVariaveis, primeiroNome } from '../../lib/email';
-import { PenLine, Code2, Eye, Pencil, Mail } from 'lucide-react';
+import { PenLine, Code2, Eye, Pencil } from 'lucide-react';
 import EmailCanvas from './EmailCanvas';
 import { bigInput, bigLabel, helpText } from '../broadcast/ui';
 
 interface EmailComposeStepProps {
-  titulo: string;
-  onTituloChange: (v: string) => void;
   assunto: string;
   onAssuntoChange: (v: string) => void;
   modo: ModoConteudo;
@@ -23,8 +21,6 @@ interface EmailComposeStepProps {
 }
 
 export default function EmailComposeStep({
-  titulo,
-  onTituloChange,
   assunto,
   onAssuntoChange,
   modo,
@@ -47,46 +43,48 @@ export default function EmailComposeStep({
     }`;
 
   return (
-    <div className="space-y-7">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <label className={bigLabel} htmlFor="email-titulo">
-            Que assunto é este e-mail?
-          </label>
-          <input
-            id="email-titulo"
-            type="text"
-            value={titulo}
-            onChange={e => onTituloChange(e.target.value)}
-            className={bigInput}
-            placeholder="Ex: Novidades de setembro"
-          />
-          <p className={helpText}>Só você vê. Serve para achar este envio depois.</p>
+    <div className="space-y-6">
+      {/* Cabeçalho no formato do Gmail: para quem vai, e o assunto */}
+      <div className="rounded-xl border-2 border-edge overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-edge">
+          <span className="text-base text-faint w-16 shrink-0">Para</span>
+          <span className="text-base text-fg">
+            {exemplo ? (
+              <>
+                <strong className="font-semibold">{exemplo.full_name || exemplo.email}</strong>
+                <span className="text-muted"> e os demais escolhidos no próximo passo</span>
+              </>
+            ) : (
+              <span className="text-muted">Ninguém disponível</span>
+            )}
+          </span>
         </div>
 
-        <div>
-          <label className={bigLabel} htmlFor="email-assunto">
-            Assunto que a pessoa vê na caixa de entrada
+        <div className="flex items-center gap-3 px-5 py-1.5">
+          <label className="text-base text-faint w-16 shrink-0" htmlFor="email-assunto">
+            Assunto
           </label>
           <input
             id="email-assunto"
             type="text"
             value={assunto}
             onChange={e => onAssuntoChange(e.target.value)}
-            className={bigInput}
-            placeholder="{{primeiro_nome}}, sua conta de luz pode cair"
+            className="flex-1 bg-transparent border-0 outline-none py-3 text-lg text-fg placeholder-faint"
+            placeholder="Sua conta de luz pode cair neste mês"
           />
-          <p className={helpText}>
-            {assunto.trim() ? (
-              <>
-                Chega assim para {nomeExemplo}: <strong className="text-fg">{assuntoFinal}</strong>
-              </>
-            ) : (
-              'Também vira o título dentro do e-mail, até você mudar o título por lá.'
-            )}
-          </p>
         </div>
       </div>
+
+      <p className={helpText}>
+        {assunto.trim() ? (
+          <>
+            {nomeExemplo} vê <strong className="text-fg">{assuntoFinal}</strong> na caixa de entrada, e o
+            mesmo texto como título dentro do e-mail.
+          </>
+        ) : (
+          'O assunto aparece na caixa de entrada e também como título dentro do e-mail.'
+        )}
+      </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2 p-1.5 rounded-xl bg-edge/25">
@@ -116,14 +114,6 @@ export default function EmailComposeStep({
 
       {vendoResultado ? (
         <div className="rounded-xl border-2 border-edge overflow-hidden">
-          <div className="px-4 py-3 bg-edge/20 border-b border-edge">
-            <p className="text-xs text-faint mb-1">Assunto</p>
-            <p className="text-base font-semibold text-fg break-words">{assuntoFinal || 'Sem assunto'}</p>
-            <p className="text-sm text-muted mt-1.5 flex items-center gap-1.5 truncate">
-              <Mail className="w-3.5 h-3.5 shrink-0" />
-              {exemplo?.email || 'exemplo@email.com'}
-            </p>
-          </div>
           {/* iframe isola o CSS do e-mail para não brigar com o do painel */}
           <iframe
             title="Como o e-mail chega"

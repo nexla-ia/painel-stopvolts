@@ -39,28 +39,25 @@ export default function EmailBlast() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const [titulo, setTitulo] = useState('');
-  const [assunto, setAssunto] = useState('');
+  const [assunto, setAssunto] = useState(CONTEUDO_PADRAO.titulo);
   const [modo, setModo] = useState<ModoConteudo>('escrever');
   const [conteudo, setConteudo] = useState<ConteudoEmail>(CONTEUDO_PADRAO);
   const [htmlCru, setHtmlCru] = useState('');
-  /**
-   * O título do cartão acompanha o assunto até alguém editá-lo à mão.
-   *
-   * Na prática os dois quase sempre dizem a mesma coisa, e digitar duas vezes
-   * é trabalho à toa. A partir do momento em que o título é alterado no
-   * cartão, ele passa a ter vida própria e o assunto para de sobrescrevê-lo.
-   */
-  const [tituloEditado, setTituloEditado] = useState(false);
 
+  /**
+   * Assunto e título são a mesma coisa, como no Gmail.
+   *
+   * `conteudo.titulo` existe para o template montar o HTML, mas nunca diverge
+   * do assunto: escrever em qualquer um dos dois lugares atualiza o outro.
+   */
   const alterarAssunto = (valor: string) => {
     setAssunto(valor);
-    if (!tituloEditado) setConteudo(c => ({ ...c, titulo: valor }));
+    setConteudo(c => ({ ...c, titulo: valor }));
   };
 
   const alterarConteudo = (novo: ConteudoEmail) => {
-    if (novo.titulo !== conteudo.titulo) setTituloEditado(true);
     setConteudo(novo);
+    if (novo.titulo !== conteudo.titulo) setAssunto(novo.titulo);
   };
 
   const [confirmando, setConfirmando] = useState(false);
@@ -155,7 +152,7 @@ export default function EmailBlast() {
     setEnviando(true);
     try {
       const payload = buildEmailPayload({
-        titulo,
+        titulo: assunto,
         assunto,
         modo,
         htmlPara: htmlDe,
@@ -174,10 +171,8 @@ export default function EmailBlast() {
             payload.total_destinatarios === 1 ? 'pessoa' : 'pessoas'
           }.`,
         );
-        setTitulo('');
-        setAssunto('');
+        setAssunto(CONTEUDO_PADRAO.titulo);
         setConteudo(CONTEUDO_PADRAO);
-        setTituloEditado(false);
         setHtmlCru('');
         setPasso(1);
       } else {
@@ -254,8 +249,6 @@ export default function EmailBlast() {
       <Panel className="p-6 sm:p-8">
         {passo === 1 && (
           <EmailComposeStep
-            titulo={titulo}
-            onTituloChange={setTitulo}
             assunto={assunto}
             onAssuntoChange={alterarAssunto}
             modo={modo}
@@ -275,7 +268,7 @@ export default function EmailBlast() {
 
         {passo === 3 && (
           <EmailReviewStep
-            titulo={titulo}
+            titulo={assunto}
             assuntoDe={assuntoDe}
             htmlDe={htmlDe}
             destinatarios={destinatarios}
