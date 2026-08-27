@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Profile, isPaidPlan } from '../../lib/supabase';
 import { podeReceberEmail } from '../../lib/email';
 import { Search, Users, Check, MailX, MapPin } from 'lucide-react';
@@ -21,13 +21,36 @@ export default function EmailRecipientsStep({ users, selectedIds, onChange }: Em
     [alcancaveis],
   );
 
-  const visiveis = useMemo(() => {
+  const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return alcancaveis;
     return alcancaveis.filter(u =>
       [u.full_name, u.email, u.city, u.state].filter(Boolean).join(' ').toLowerCase().includes(termo),
     );
   }, [alcancaveis, busca]);
+
+  /**
+   * Ordem da lista, com os escolhidos em cima.
+   *
+   * A ordenação é recalculada só quando a busca ou o conjunto de contas muda,
+   * nunca a cada clique: `selectedIds` fica fora das dependências de propósito.
+   * Se entrasse, o item saltaria de posição no instante em que fosse marcado e
+   * a pessoa perderia o lugar onde estava lendo.
+   */
+  const ordemRef = useRef<Set<string>>(selectedIds);
+  const visiveis = useMemo(() => {
+    const noTopo = ordemRef.current;
+    return [...filtrados].sort((a, b) => {
+      const diff = Number(noTopo.has(b.id)) - Number(noTopo.has(a.id));
+      return diff !== 0 ? diff : (a.full_name || a.email).localeCompare(b.full_name || b.email, 'pt-BR');
+    });
+  }, [filtrados]);
+
+  // Congela a ordem no estado atual da seleção sempre que a lista é remontada.
+  useEffect(() => {
+    ordemRef.current = new Set(selectedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtrados]);
 
   const alternar = (id: string) => {
     const next = new Set(selectedIds);
@@ -108,36 +131,49 @@ export default function EmailRecipientsStep({ users, selectedIds, onChange }: Em
 
         <div className="rounded-lg border-2 border-edge overflow-hidden">
           <div className="max-h-[26rem] overflow-y-auto overscroll-contain divide-y divide-edge">
-            {visiveis.map(user => {
+            {visiveis.map((user, i) => {
               const marcado = selectedIds.has(user.id);
+              // Marca onde termina o bloco dos escolhidos, para a divisão
+              // entre "vai receber" e "não vai" ficar evidente ao rolar.
+              const primeiroNaoEscolhido =
+                !ordemRef.current.has(user.id) && i > 0 && ordemRef.current.has(visiveis[i - 1].id);
+
               return (
-                <label
-                  key={user.id}
-                  className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${
-                    marcado ? 'bg-volt-soft' : 'hover:bg-edge/20'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={marcado}
-                    onChange={() => alternar(user.id)}
-                    className="peer sr-only"
-                  />
-                  <span
-                    className={`shrink-0 w-7 h-7 rounded-md border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-4 peer-focus-visible:ring-volt/40 ${
-                      marcado ? 'bg-volt border-volt' : 'border-edge-strong bg-ink'
+                <div key={user.id}>
+                  {primeiroNaoEscolhido && (
+                    <p className="px-5 py-2 text-xs uppercase tracking-wider text-faint bg-edge/25 border-y border-edge">
+                      Não vão receber
+                    </p>
+                  )}
+                  <label
+                    className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${
+                      marcado ? 'bg-volt-soft' : 'hover:bg-edge/20'
                     }`}
                   >
-                    {marcado && <Check className="w-5 h-5 text-volt-ink" strokeWidth={3} />}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-base font-medium text-fg truncate">
-                      {user.full_name || 'Sem nome'}
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      onChange={() => alternar(user.id)}
+                      className="peer sr-only"
+                    />
+                    <span
+                      className={`shrink-0 w-7 h-7 rounded-md border-2 flex items-center justify-center transition-colors peer-focus-visible:ring-4 peer-focus-visible:ring-volt/40 ${
+                        marcado ? 'bg-volt border-volt' : 'border-edge-strong bg-ink'
+                      }`}
+                    >
+                      {marcado && <Check className="w-5 h-5 text-volt-ink" strokeWidth={3} />}
                     </span>
-                    <span className="block text-base text-muted truncate">{user.email}</span>
-                  </span>
-                  {user.state && <span className="shrink-0 text-sm text-faint font-mono">{user.state}</span>}
-                </label>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-base font-medium text-fg truncate">
+                        {user.full_name || 'Sem nome'}
+                      </span>
+                      <span className="block text-base text-muted truncate">{user.email}</span>
+                    </span>
+                    {user.state && (
+                      <span className="shrink-0 text-sm text-faint font-mono">{user.state}</span>
+                    )}
+                  </label>
+                </div>
               );
             })}
 

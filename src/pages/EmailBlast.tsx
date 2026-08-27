@@ -251,7 +251,7 @@ export default function EmailBlast() {
 
         {passo === 3 && (
           <EmailReviewStep
-            titulo={assunto}
+            assunto={assunto}
             assuntoDe={assuntoDe}
             htmlDe={htmlDe}
             destinatarios={destinatarios}
