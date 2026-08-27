@@ -81,21 +81,6 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
 
             <div className="px-8 py-9">
               <RichTextArea
-                value={conteudo.titulo}
-                onChange={v => set('titulo', v)}
-                placeholder="Título do e-mail"
-                ariaLabel="Título do e-mail"
-                destacar
-                className="text-center px-1 py-0.5 mb-3"
-                style={{
-                  color: c.titulo,
-                  fontSize: '21px',
-                  fontWeight: 700,
-                  lineHeight: 1.25,
-                }}
-              />
-
-              <RichTextArea
                 value={conteudo.corpo}
                 onChange={v => set('corpo', v)}
                 placeholder="Escreva a mensagem. Deixe uma linha em branco entre parágrafos."

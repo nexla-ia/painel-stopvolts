@@ -78,11 +78,10 @@ export default function EmailComposeStep({
       <p className={helpText}>
         {assunto.trim() ? (
           <>
-            {nomeExemplo} vê <strong className="text-fg">{assuntoFinal}</strong> na caixa de entrada, e o
-            mesmo texto como título dentro do e-mail.
+            É o que {nomeExemplo} vê na caixa de entrada: <strong className="text-fg">{assuntoFinal}</strong>
           </>
         ) : (
-          'O assunto aparece na caixa de entrada e também como título dentro do e-mail.'
+          'É a única coisa que a pessoa lê antes de decidir se abre o e-mail.'
         )}
       </p>
 

@@ -54,21 +54,34 @@ export const TONS = {
 
 export type TomEmail = keyof typeof TONS;
 
+/**
+ * Corpo do e-mail.
+ *
+ * Sem título: o assunto já é o título e aparece na caixa de entrada. Repetir
+ * o mesmo texto dentro do cartão só ocuparia espaço dizendo o que a pessoa
+ * acabou de ler para abrir a mensagem.
+ */
 export interface ConteudoEmail {
   tom: TomEmail;
-  titulo: string;
   corpo: string;
   botaoTexto: string;
   botaoUrl: string;
   rodape: string;
 }
 
+export const ASSUNTO_PADRAO = '';
+
+/**
+ * Começa em branco de propósito.
+ *
+ * Texto de exemplo já preenchido é o tipo de coisa que acaba sendo enviada
+ * sem querer para a base inteira. Só o rodapé vem pronto, por ser institucional
+ * e igual em todo envio.
+ */
 export const CONTEUDO_PADRAO: ConteudoEmail = {
   tom: 'verde',
-  titulo: 'Sua conta de luz pode cair neste mês',
-  corpo:
-    'Olá, {{primeiro_nome}}. A bandeira tarifária mudou e isso pesa na conta de todo mundo.\n\nNo *StopVolts* você acompanha quais aparelhos mais consomem e quanto dá para economizar em cada um.',
-  botaoTexto: 'Ver meu consumo',
+  corpo: '',
+  botaoTexto: '',
   botaoUrl: '',
   rodape: 'Enviado automaticamente por StopVolts',
 };
@@ -165,7 +178,7 @@ export function aplicarVariaveis(texto: string, user: Profile) {
  * cantos arredondados ficam; onde não há suporte, degradam sem quebrar nada.
  */
 export function montarHtml(conteudo: ConteudoEmail) {
-  const { tom, titulo, corpo, botaoTexto, botaoUrl, rodape } = conteudo;
+  const { tom, corpo, botaoTexto, botaoUrl, rodape } = conteudo;
   const t = TONS[tom] ?? TONS.verde;
   const c = CORES_EMAIL;
 
@@ -181,10 +194,6 @@ export function montarHtml(conteudo: ConteudoEmail) {
     .join('');
 
   const blocoLogo = `<img src="${LOGO_URL}" alt="StopVolts" width="48" height="48" style="width:48px;height:48px;border-radius:10px;display:block;margin:0 auto 12px;border:0;" />`;
-
-  const blocoTitulo = titulo.trim()
-    ? `<h2 style="color:${c.titulo};text-align:center;margin:0 0 16px;font-size:21px;font-weight:700;">${escaparHtml(titulo.trim())}</h2>`
-    : '';
 
   const blocoBotao =
     botaoUrl.trim() && botaoTexto.trim()
@@ -224,7 +233,6 @@ export function montarHtml(conteudo: ConteudoEmail) {
               </tr>
               <tr>
                 <td style="padding:36px 32px;">
-                  ${blocoTitulo}
                   ${paragrafos}
                   ${blocoBotao}
                 </td>
@@ -247,7 +255,7 @@ export function montarHtml(conteudo: ConteudoEmail) {
 
 /** Versão em texto puro, para clientes que não exibem HTML. */
 export function montarTexto(conteudo: ConteudoEmail) {
-  const partes = [conteudo.titulo.trim(), semMarcacao(conteudo.corpo.trim())];
+  const partes = [semMarcacao(conteudo.corpo.trim())];
   if (conteudo.botaoUrl.trim() && conteudo.botaoTexto.trim()) {
     partes.push(`${conteudo.botaoTexto.trim()}: ${conteudo.botaoUrl.trim()}`);
   }

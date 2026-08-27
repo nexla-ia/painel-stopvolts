@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import {
   ConteudoEmail,
   CONTEUDO_PADRAO,
+  ASSUNTO_PADRAO,
   ModoConteudo,
   aplicarVariaveis,
   buildEmailPayload,
@@ -39,26 +40,10 @@ export default function EmailBlast() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const [assunto, setAssunto] = useState(CONTEUDO_PADRAO.titulo);
+  const [assunto, setAssunto] = useState(ASSUNTO_PADRAO);
   const [modo, setModo] = useState<ModoConteudo>('escrever');
   const [conteudo, setConteudo] = useState<ConteudoEmail>(CONTEUDO_PADRAO);
   const [htmlCru, setHtmlCru] = useState('');
-
-  /**
-   * Assunto e título são a mesma coisa, como no Gmail.
-   *
-   * `conteudo.titulo` existe para o template montar o HTML, mas nunca diverge
-   * do assunto: escrever em qualquer um dos dois lugares atualiza o outro.
-   */
-  const alterarAssunto = (valor: string) => {
-    setAssunto(valor);
-    setConteudo(c => ({ ...c, titulo: valor }));
-  };
-
-  const alterarConteudo = (novo: ConteudoEmail) => {
-    setConteudo(novo);
-    if (novo.titulo !== conteudo.titulo) setAssunto(novo.titulo);
-  };
 
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -103,7 +88,6 @@ export default function EmailBlast() {
       // Cada campo passa pelas variáveis antes de virar HTML
       return montarHtml({
         ...conteudo,
-        titulo: aplicarVariaveis(conteudo.titulo, user),
         corpo: aplicarVariaveis(conteudo.corpo, user),
         botaoTexto: aplicarVariaveis(conteudo.botaoTexto, user),
         rodape: aplicarVariaveis(conteudo.rodape, user),
@@ -117,7 +101,6 @@ export default function EmailBlast() {
       if (modo === 'html') return htmlParaTexto(aplicarVariaveis(htmlCru, user));
       return montarTexto({
         ...conteudo,
-        titulo: aplicarVariaveis(conteudo.titulo, user),
         corpo: aplicarVariaveis(conteudo.corpo, user),
         botaoTexto: aplicarVariaveis(conteudo.botaoTexto, user),
         rodape: aplicarVariaveis(conteudo.rodape, user),
@@ -171,7 +154,7 @@ export default function EmailBlast() {
             payload.total_destinatarios === 1 ? 'pessoa' : 'pessoas'
           }.`,
         );
-        setAssunto(CONTEUDO_PADRAO.titulo);
+        setAssunto(ASSUNTO_PADRAO);
         setConteudo(CONTEUDO_PADRAO);
         setHtmlCru('');
         setPasso(1);
@@ -250,11 +233,11 @@ export default function EmailBlast() {
         {passo === 1 && (
           <EmailComposeStep
             assunto={assunto}
-            onAssuntoChange={alterarAssunto}
+            onAssuntoChange={setAssunto}
             modo={modo}
             onModoChange={setModo}
             conteudo={conteudo}
-            onConteudoChange={alterarConteudo}
+            onConteudoChange={setConteudo}
             htmlCru={htmlCru}
             onHtmlCruChange={setHtmlCru}
             exemplo={exemplo}
