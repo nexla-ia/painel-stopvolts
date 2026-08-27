@@ -1,11 +1,26 @@
+import { useRef } from 'react';
 import { CORES_EMAIL, ConteudoEmail, LOGO_URL, TONS, TomEmail } from '../../lib/email';
 import { Link2, Bold } from 'lucide-react';
-import RichTextArea from './RichTextArea';
+import RichTextArea, { RichTextAreaHandle } from './RichTextArea';
 
 interface EmailCanvasProps {
   conteudo: ConteudoEmail;
   onChange: (c: ConteudoEmail) => void;
 }
+
+/**
+ * Dados da pessoa que a mensagem pode usar.
+ *
+ * Ficam como botões porque decorar `{{primeiro_nome}}` não é razoável para
+ * quem só quer escrever um aviso.
+ */
+const ATALHOS = [
+  { rotulo: 'Nome', chave: '{{primeiro_nome}}' },
+  { rotulo: 'Nome completo', chave: '{{nome}}' },
+  { rotulo: 'E-mail', chave: '{{email}}' },
+  { rotulo: 'Cidade', chave: '{{cidade}}' },
+  { rotulo: 'Estado', chave: '{{estado}}' },
+] as const;
 
 /**
  * O e-mail montado, com os textos editáveis no próprio lugar.
@@ -17,16 +32,37 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
   const set = (campo: keyof ConteudoEmail, valor: string) => onChange({ ...conteudo, [campo]: valor });
   const tom = TONS[conteudo.tom] ?? TONS.verde;
   const c = CORES_EMAIL;
+  // A barra de ferramentas age sobre a mensagem, que é o campo longo.
+  const corpoRef = useRef<RichTextAreaHandle>(null);
 
   return (
     <div className="rounded-xl border-2 border-edge overflow-hidden">
       {/* Barra de ferramentas */}
-      <div className="px-4 py-3 bg-edge/20 border-b border-edge flex flex-wrap items-center gap-x-6 gap-y-3">
-        <span className="flex items-center gap-2 text-sm text-muted">
-          <Bold className="w-4 h-4 shrink-0" />
-          Escreva <code className="font-mono text-xs bg-edge/60 px-1.5 py-0.5 rounded">*assim*</code> para
-          destacar
-        </span>
+      <div className="px-4 py-3 bg-edge/20 border-b border-edge flex flex-wrap items-center gap-x-5 gap-y-3">
+        <button
+          type="button"
+          onClick={() => corpoRef.current?.envolver('*')}
+          title="Deixar em negrito"
+          aria-label="Deixar em negrito"
+          className="w-9 h-9 flex items-center justify-center rounded-md border border-edge text-fg hover:bg-edge/50 hover:border-edge-strong transition-colors"
+        >
+          <Bold className="w-4 h-4" />
+        </button>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-sm text-muted mr-0.5">Inserir</span>
+          {ATALHOS.map(a => (
+            <button
+              key={a.chave}
+              type="button"
+              onClick={() => corpoRef.current?.inserir(a.chave)}
+              title={`Insere ${a.chave} na mensagem`}
+              className="px-2.5 py-1.5 rounded-md border border-edge text-sm font-medium text-fg hover:bg-edge/50 hover:border-edge-strong transition-colors"
+            >
+              {a.rotulo}
+            </button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2.5 ml-auto">
           <span className="text-sm text-muted shrink-0">Cor</span>
@@ -81,6 +117,7 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
 
             <div className="px-8 py-9">
               <RichTextArea
+                ref={corpoRef}
                 value={conteudo.corpo}
                 onChange={v => set('corpo', v)}
                 placeholder="Escreva a mensagem. Deixe uma linha em branco entre parágrafos."

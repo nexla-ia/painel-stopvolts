@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useRef } from 'react';
+import { CSSProperties, forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { CORES_EMAIL } from '../../lib/email';
 
 interface RichTextAreaProps {
@@ -10,6 +10,14 @@ interface RichTextAreaProps {
   ariaLabel: string;
   /** Aplica o negrito de `*palavra*` na camada de baixo. */
   destacar?: boolean;
+}
+
+/** O que a barra de ferramentas precisa para mexer no campo. */
+export interface RichTextAreaHandle {
+  /** Insere o texto na posição do cursor. */
+  inserir: (texto: string) => void;
+  /** Envolve o trecho selecionado, ou abre um par vazio se não houver seleção. */
+  envolver: (marcador: string) => void;
 }
 
 const escapar = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -46,17 +54,56 @@ function pintar(texto: string) {
  * corretor continuam sendo os nativos do navegador — o que um `contentEditable`
  * costuma estragar.
  */
-export default function RichTextArea({
-  value,
-  onChange,
-  className,
-  style,
-  placeholder,
-  ariaLabel,
-  destacar = false,
-}: RichTextAreaProps) {
+const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(function RichTextArea(
+  { value, onChange, className, style, placeholder, ariaLabel, destacar = false },
+  ref,
+) {
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const fundoRef = useRef<HTMLDivElement>(null);
+
+  /** Devolve o foco e reposiciona o cursor depois que o React repinta o valor. */
+  const reposicionar = (inicio: number, fim: number) => {
+    requestAnimationFrame(() => {
+      const area = areaRef.current;
+      if (!area) return;
+      area.focus();
+      area.setSelectionRange(inicio, fim);
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    inserir: texto => {
+      const area = areaRef.current;
+      const pos = area ? area.selectionStart : value.length;
+      const fim = area ? area.selectionEnd : value.length;
+      onChange(value.slice(0, pos) + texto + value.slice(fim));
+      reposicionar(pos + texto.length, pos + texto.length);
+    },
+    envolver: marcador => {
+      const area = areaRef.current;
+      const inicio = area ? area.selectionStart : value.length;
+      const fim = area ? area.selectionEnd : value.length;
+      const selecionado = value.slice(inicio, fim);
+
+      // Já marcado: tira os marcadores em vez de empilhar outro par.
+      if (
+        selecionado.startsWith(marcador) &&
+        selecionado.endsWith(marcador) &&
+        selecionado.length > marcador.length * 2
+      ) {
+        const limpo = selecionado.slice(marcador.length, -marcador.length);
+        onChange(value.slice(0, inicio) + limpo + value.slice(fim));
+        reposicionar(inicio, inicio + limpo.length);
+        return;
+      }
+
+      const marcado = marcador + selecionado + marcador;
+      onChange(value.slice(0, inicio) + marcado + value.slice(fim));
+      // Sem seleção, deixa o cursor entre os dois marcadores.
+      if (selecionado) reposicionar(inicio, inicio + marcado.length);
+      else reposicionar(inicio + marcador.length, inicio + marcador.length);
+    },
+  }));
 
   // Cresce com o conteúdo, para o cartão crescer junto em vez de rolar.
   useEffect(() => {
@@ -113,4 +160,6 @@ export default function RichTextArea({
       />
     </div>
   );
-}
+});
+
+export default RichTextArea;

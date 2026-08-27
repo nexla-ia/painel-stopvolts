@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { SyntheticEvent, useState } from 'react';
 import { Profile } from '../../lib/supabase';
 import { primeiroNome } from '../../lib/email';
 import { formatBytes } from '../../lib/broadcast';
@@ -22,6 +22,19 @@ export default function EmailReviewStep({
 }: EmailReviewStepProps) {
   const [indice, setIndice] = useState(0);
   const [busca, setBusca] = useState('');
+  const [altura, setAltura] = useState(420);
+
+  /**
+   * Encolhe a moldura até a altura real do e-mail.
+   *
+   * Com altura fixa, uma mensagem curta deixava metade da área em branco. O
+   * mínimo evita que um e-mail de uma linha vire uma faixa fina demais.
+   */
+  const ajustarAltura = (e: SyntheticEvent<HTMLIFrameElement>) => {
+    const doc = e.currentTarget.contentDocument;
+    if (!doc?.body) return;
+    setAltura(Math.min(Math.max(doc.body.scrollHeight + 8, 320), 900));
+  };
 
   const posicao = Math.min(indice, Math.max(destinatarios.length - 1, 0));
   const pessoa = destinatarios[posicao] ?? null;
@@ -92,62 +105,43 @@ export default function EmailReviewStep({
         </div>
 
         {pessoa ? (
-          // iframe isola o CSS do e-mail para não brigar com o do painel
+          /*
+           * iframe isola o CSS do e-mail para não brigar com o do painel.
+           * `allow-same-origin` sem `allow-scripts` deixa medir a altura do
+           * conteúdo sem permitir que ele execute nada — o HTML é gerado aqui,
+           * mas continua rodando isolado.
+           */
           <iframe
             title="Como o e-mail chega"
             srcDoc={htmlDe(pessoa)}
-            sandbox=""
-            className="w-full h-[34rem] bg-white border-0"
+            sandbox="allow-same-origin"
+            onLoad={ajustarAltura}
+            style={{ height: `${altura}px` }}
+            className="w-full bg-white border-0 block transition-[height] duration-200"
           />
         ) : (
           <p className="text-center text-base text-muted py-20">Ninguém selecionado.</p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="flex items-center gap-3.5 p-4 rounded-lg border-2 border-edge">
-          <Users className="w-6 h-6 text-muted shrink-0" />
-          <div className="min-w-0">
-            <p className="text-2xl font-display font-bold text-fg leading-none font-tabular">
-              {destinatarios.length}
-            </p>
-            <p className="text-sm text-muted mt-1">
-              {destinatarios.length === 1 ? 'pessoa recebe' : 'pessoas recebem'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3.5 p-4 rounded-lg border-2 border-edge">
-          <Mail className="w-6 h-6 text-muted shrink-0" />
-          <div className="min-w-0">
-            <p className="text-2xl font-display font-bold text-fg leading-none font-tabular">
-              {destinatarios.length}
-            </p>
-            <p className="text-sm text-muted mt-1">e-mails, um por pessoa</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3.5 p-4 rounded-lg border-2 border-edge">
-          <CheckCircle2 className="w-6 h-6 text-muted shrink-0" />
-          <div className="min-w-0">
-            <p className="text-2xl font-display font-bold text-fg leading-none font-tabular">
-              {formatBytes(peso)}
-            </p>
-            <p className="text-sm text-muted mt-1">tamanho do envio</p>
-          </div>
-        </div>
-      </div>
-
       {/* Lista de quem recebe, em vez de nomes corridos separados por ponto */}
       <div className="rounded-lg border-2 border-edge overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-edge bg-edge/15">
-          <p className="text-base font-semibold text-fg">
-            Quem vai receber{' '}
-            <span className="text-muted font-normal">
-              ({listados.length}
-              {termo && ` de ${destinatarios.length}`})
-            </span>
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-edge bg-edge/15">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            <p className="flex items-center gap-2 text-base font-semibold text-fg">
+              <Users className="w-5 h-5 text-muted" />
+              {destinatarios.length} {destinatarios.length === 1 ? 'pessoa recebe' : 'pessoas recebem'}
+            </p>
+            <p className="flex items-center gap-2 text-sm text-muted">
+              <Mail className="w-4 h-4" />
+              Um e-mail para cada, {formatBytes(peso)} no total
+            </p>
+            {termo && (
+              <p className="text-sm text-faint">
+                mostrando {listados.length} de {destinatarios.length}
+              </p>
+            )}
+          </div>
 
           {destinatarios.length > 8 && (
             <div className="relative">
