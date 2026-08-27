@@ -13,12 +13,14 @@ import {
   Sun,
   DollarSign,
   Send,
+  Mail,
 } from 'lucide-react';
 
 const navigation = [
   { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
   { to: '/users', label: 'Usuários', icon: Users, end: false },
-  { to: '/broadcast', label: 'Envio de Informações', icon: Send, end: false },
+  { to: '/broadcast', label: 'Informativos', icon: Send, end: false },
+  { to: '/emails', label: 'E-mails', icon: Mail, end: false },
   { to: '/promo-codes', label: 'Códigos Promocionais', icon: Tag, end: false },
   { to: '/tariffs', label: 'Tarifas', icon: DollarSign, end: false },
 ];

@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Broadcast from './pages/Broadcast';
+import EmailBlast from './pages/EmailBlast';
 import PromoCodes from './pages/PromoCodes';
 import Tariffs from './pages/Tariffs';
 
@@ -26,6 +27,7 @@ function AppRoutes() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
           <Route path="/broadcast" element={<Broadcast />} />
+          <Route path="/emails" element={<EmailBlast />} />
           <Route path="/promo-codes" element={<PromoCodes />} />
           <Route path="/tariffs" element={<Tariffs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
