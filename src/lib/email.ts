@@ -127,16 +127,12 @@ export function aplicarNegrito(textoEscapado: string) {
 /** Tira os asteriscos, para a versão em texto puro. */
 const semMarcacao = (texto: string) => texto.replace(/(?<![\w*])\*([^*\n]+)\*(?![\w*])/g, '$1');
 
-/** Variáveis que o texto e o HTML colado podem usar. */
-export const VARIAVEIS = [
-  { chave: '{{primeiro_nome}}', descricao: 'Só o primeiro nome' },
-  { chave: '{{nome}}', descricao: 'Nome completo' },
-  { chave: '{{email}}', descricao: 'E-mail da pessoa' },
-  { chave: '{{cidade}}', descricao: 'Cidade' },
-  { chave: '{{estado}}', descricao: 'Estado (UF)' },
-] as const;
-
-/** Troca as variáveis pelos dados da pessoa. */
+/**
+ * Troca as variáveis pelos dados da pessoa.
+ *
+ * Aceita `{{primeiro_nome}}`, `{{nome}}`, `{{email}}`, `{{cidade}}` e
+ * `{{estado}}`, no assunto, no texto e no HTML colado.
+ */
 export function aplicarVariaveis(texto: string, user: Profile) {
   return texto
     .replace(/\{\{\s*nome\s*\}\}/gi, user.full_name?.trim() || '')

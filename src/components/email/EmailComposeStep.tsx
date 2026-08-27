@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Profile } from '../../lib/supabase';
-import { ConteudoEmail, ModoConteudo, VARIAVEIS, aplicarVariaveis, primeiroNome } from '../../lib/email';
+import { ConteudoEmail, ModoConteudo, aplicarVariaveis, primeiroNome } from '../../lib/email';
 import { PenLine, Code2, Eye, Pencil, Mail } from 'lucide-react';
 import EmailCanvas from './EmailCanvas';
 import { bigInput, bigLabel, helpText } from '../broadcast/ui';
@@ -149,26 +149,11 @@ export default function EmailComposeStep({
             placeholder={'<div style="...">\n  ...\n</div>'}
           />
           <p className={helpText}>
-            Pode ser um trecho ou uma página inteira. Use as variáveis abaixo para personalizar.
+            Pode ser um trecho ou uma página inteira. Escreva{' '}
+            <code className="font-mono text-sm">{'{{primeiro_nome}}'}</code> onde quiser o nome da pessoa.
           </p>
         </div>
       )}
-
-      <div className="rounded-lg border-2 border-edge p-5">
-        <p className="text-base font-semibold text-fg mb-3">
-          Escreva isto e o sistema troca pelos dados de cada pessoa
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-          {VARIAVEIS.map(v => (
-            <p key={v.chave} className="text-base text-muted flex items-baseline gap-2">
-              <code className="font-mono text-sm bg-edge/50 px-1.5 py-0.5 rounded text-fg shrink-0">
-                {v.chave}
-              </code>
-              {v.descricao}
-            </p>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
