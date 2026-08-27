@@ -8,11 +8,6 @@ export const EMAIL_WEBHOOK_URL =
 /** Modo de montagem do conteúdo. */
 export type ModoConteudo = 'escrever' | 'html';
 
-export interface BotaoEmail {
-  texto: string;
-  url: string;
-}
-
 export interface DestinatarioEmail {
   id: string;
   nome: string;
@@ -83,52 +78,86 @@ export function aplicarVariaveis(texto: string, user: Profile) {
     .replace(/\{\{\s*estado\s*\}\}/gi, user.state || '');
 }
 
-/**
- * Monta o HTML do e-mail a partir do texto escrito na tela.
- *
- * Usa tabelas e CSS embutido de propósito: Outlook e Gmail ignoram folhas de
- * estilo e boa parte do CSS moderno, então layout de e-mail continua sendo
- * feito assim. A largura de 600px é o padrão que cabe em todos os clientes.
- */
-export function montarHtml(params: {
-  saudacao: string;
+/** Conteúdo editável do e-mail — cada campo vira um bloco do template. */
+export interface ConteudoEmail {
+  /** Emoji do círculo no topo do cartão. Vazio esconde o círculo. */
+  emoji: string;
+  titulo: string;
   corpo: string;
-  botao: BotaoEmail | null;
-  assinatura: string;
-}) {
-  const { saudacao, corpo, botao, assinatura } = params;
+  botaoTexto: string;
+  botaoUrl: string;
+  rodape: string;
+  /** URL pública do logo. Vazio cai no bloco com a inicial. */
+  logoUrl: string;
+}
+
+export const CONTEUDO_PADRAO: ConteudoEmail = {
+  emoji: '💡',
+  titulo: 'Sua conta de luz pode cair',
+  corpo:
+    'Olá, {{primeiro_nome}}! A bandeira tarifária mudou neste mês e isso pesa na conta de todo mundo.\n\nNo aplicativo você vê quais aparelhos mais consomem e quanto dá para economizar em cada um.',
+  botaoTexto: 'Abrir o StopVolts',
+  botaoUrl: '',
+  rodape: 'Enviado automaticamente por StopVolts',
+  logoUrl: '',
+};
+
+/**
+ * Monta o HTML final do e-mail.
+ *
+ * O CSS vai todo embutido porque Gmail e Outlook descartam folhas de estilo.
+ * Evita flexbox e grid pelo mesmo motivo — o Outlook desktop renderiza com o
+ * motor do Word e ignora os dois. Border-radius e sombra ficam: onde não há
+ * suporte, degradam para cantos retos sem quebrar o layout.
+ */
+export function montarHtml(conteudo: ConteudoEmail) {
+  const { emoji, titulo, corpo, botaoTexto, botaoUrl, rodape, logoUrl } = conteudo;
 
   const paragrafos = corpo
     .split(/\n{2,}/)
     .map(bloco => bloco.trim())
     .filter(Boolean)
     .map(
-      bloco =>
-        `<p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#2b2b2b;">${escaparHtml(
-          bloco,
-        ).replace(/\n/g, '<br />')}</p>`,
+      (bloco, i, todos) =>
+        `<p style="color:#6B7280;font-size:15px;line-height:1.7;text-align:center;margin:0 0 ${
+          i === todos.length - 1 ? '28px' : '12px'
+        };">${escaparHtml(bloco).replace(/\n/g, '<br />')}</p>`,
     )
     .join('');
 
-  const blocoBotao =
-    botao && botao.url.trim() && botao.texto.trim()
-      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;">
-          <tr>
-            <td align="center" bgcolor="#B45309" style="border-radius:6px;">
-              <a href="${escaparHtml(botao.url.trim())}"
-                 style="display:inline-block;padding:14px 28px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px;">
-                ${escaparHtml(botao.texto.trim())}
-              </a>
-            </td>
-          </tr>
-        </table>`
-      : '';
+  const blocoLogo = logoUrl.trim()
+    ? `<img src="${escaparHtml(logoUrl.trim())}" alt="StopVolts" width="48" height="48"
+           style="border-radius:10px;display:block;margin:0 auto 12px;border:0;" />`
+    : `<div style="width:48px;height:48px;line-height:48px;background:#B45F04;border-radius:10px;margin:0 auto 12px;text-align:center;">
+         <span style="color:#ffffff;font-size:24px;font-weight:700;">S</span>
+       </div>`;
 
-  const blocoSaudacao = saudacao.trim()
-    ? `<p style="margin:0 0 16px;font-size:18px;line-height:1.5;color:#1a1a1a;font-weight:bold;">${escaparHtml(
-        saudacao.trim(),
-      )}</p>`
+  // O círculo do emoji usa line-height no lugar de flex, que o Outlook ignora.
+  const blocoEmoji = emoji.trim()
+    ? `<div style="width:48px;height:48px;line-height:48px;background:#FEF3C7;border-radius:12px;margin:0 auto 20px;text-align:center;">
+         <span style="font-size:22px;">${escaparHtml(emoji.trim())}</span>
+       </div>`
     : '';
+
+  const blocoTitulo = titulo.trim()
+    ? `<h2 style="color:#111827;text-align:center;margin:0 0 16px;font-size:21px;font-weight:700;">${escaparHtml(
+        titulo.trim(),
+      )}</h2>`
+    : '';
+
+  const blocoBotao =
+    botaoUrl.trim() && botaoTexto.trim()
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+           <tr>
+             <td align="center" bgcolor="#B45F04" style="border-radius:10px;">
+               <a href="${escaparHtml(botaoUrl.trim())}"
+                  style="background:#B45F04;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:15px;padding:14px 36px;border-radius:10px;display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                 ${escaparHtml(botaoTexto.trim())}
+               </a>
+             </td>
+           </tr>
+         </table>`
+      : '';
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -137,30 +166,37 @@ export function montarHtml(params: {
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>StopVolts</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f2;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f2;">
+<body style="margin:0;padding:0;background:#F9FAFB;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F9FAFB;">
   <tr>
-    <td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;font-family:Helvetica,Arial,sans-serif;">
+    <td align="center" style="padding:40px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" style="width:480px;max-width:100%;">
+
         <tr>
-          <td style="background-color:#B45309;padding:20px 32px;">
-            <span style="font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:-0.5px;">StopVolts</span>
+          <td align="center" style="padding-bottom:28px;">
+            ${blocoLogo}
+            <span style="color:#9CA3AF;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;">StopVolts</span>
           </td>
         </tr>
+
         <tr>
-          <td style="padding:32px;">
-            ${blocoSaudacao}
+          <td style="background:#FFFFFF;border-radius:16px;padding:36px 32px;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04);">
+            ${blocoEmoji}
+            ${blocoTitulo}
             ${paragrafos}
             ${blocoBotao}
           </td>
         </tr>
+
         <tr>
-          <td style="padding:20px 32px;background-color:#faf9f7;border-top:1px solid #e8e6e1;">
-            <p style="margin:0;font-size:13px;line-height:1.6;color:#7a756c;">${escaparHtml(
-              assinatura,
-            ).replace(/\n/g, '<br />')}</p>
+          <td align="center" style="padding-top:28px;">
+            <p style="color:#9CA3AF;font-size:12px;text-align:center;margin:0;">${escaparHtml(rodape).replace(
+              /\n/g,
+              '<br />',
+            )}</p>
           </td>
         </tr>
+
       </table>
     </td>
   </tr>
@@ -170,17 +206,12 @@ export function montarHtml(params: {
 }
 
 /** Versão em texto puro, para clientes que não exibem HTML. */
-export function montarTexto(params: {
-  saudacao: string;
-  corpo: string;
-  botao: BotaoEmail | null;
-  assinatura: string;
-}) {
-  const partes = [params.saudacao.trim(), params.corpo.trim()];
-  if (params.botao?.url.trim()) {
-    partes.push(`${params.botao.texto.trim()}: ${params.botao.url.trim()}`);
+export function montarTexto(conteudo: ConteudoEmail) {
+  const partes = [conteudo.titulo.trim(), conteudo.corpo.trim()];
+  if (conteudo.botaoUrl.trim()) {
+    partes.push(`${conteudo.botaoTexto.trim()}: ${conteudo.botaoUrl.trim()}`);
   }
-  partes.push('—', params.assinatura.trim());
+  partes.push('—', conteudo.rodape.trim());
   return partes.filter(Boolean).join('\n\n');
 }
 

@@ -3,7 +3,8 @@ import { supabase, Profile, PROFILE_COLUMNS } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import {
-  BotaoEmail,
+  ConteudoEmail,
+  CONTEUDO_PADRAO,
   ModoConteudo,
   aplicarVariaveis,
   buildEmailPayload,
@@ -29,9 +30,6 @@ const PASSOS = [
   { numero: 3, titulo: 'Conferir', descricao: 'Revisar e enviar', icon: ClipboardCheck },
 ] as const;
 
-const ASSINATURA_PADRAO =
-  'StopVolts — economia de energia na palma da mão.\nVocê recebeu este e-mail porque tem conta no aplicativo.';
-
 export default function EmailBlast() {
   const { profile } = useAuth();
   const toast = useToast();
@@ -44,10 +42,7 @@ export default function EmailBlast() {
   const [titulo, setTitulo] = useState('');
   const [assunto, setAssunto] = useState('');
   const [modo, setModo] = useState<ModoConteudo>('escrever');
-  const [saudacao, setSaudacao] = useState('Olá, {{primeiro_nome}}!');
-  const [corpo, setCorpo] = useState('');
-  const [botao, setBotao] = useState<BotaoEmail>({ texto: '', url: '' });
-  const [assinatura, setAssinatura] = useState(ASSINATURA_PADRAO);
+  const [conteudo, setConteudo] = useState<ConteudoEmail>(CONTEUDO_PADRAO);
   const [htmlCru, setHtmlCru] = useState('');
 
   const [confirmando, setConfirmando] = useState(false);
@@ -90,27 +85,30 @@ export default function EmailBlast() {
   const htmlDe = useCallback(
     (user: Profile) => {
       if (modo === 'html') return aplicarVariaveis(htmlCru, user);
+      // Cada campo passa pelas variáveis antes de virar HTML
       return montarHtml({
-        saudacao: aplicarVariaveis(saudacao, user),
-        corpo: aplicarVariaveis(corpo, user),
-        botao: botao.url.trim() && botao.texto.trim() ? botao : null,
-        assinatura,
+        ...conteudo,
+        titulo: aplicarVariaveis(conteudo.titulo, user),
+        corpo: aplicarVariaveis(conteudo.corpo, user),
+        botaoTexto: aplicarVariaveis(conteudo.botaoTexto, user),
+        rodape: aplicarVariaveis(conteudo.rodape, user),
       });
     },
-    [modo, htmlCru, saudacao, corpo, botao, assinatura],
+    [modo, htmlCru, conteudo],
   );
 
   const textoDe = useCallback(
     (user: Profile) => {
       if (modo === 'html') return htmlParaTexto(aplicarVariaveis(htmlCru, user));
       return montarTexto({
-        saudacao: aplicarVariaveis(saudacao, user),
-        corpo: aplicarVariaveis(corpo, user),
-        botao: botao.url.trim() && botao.texto.trim() ? botao : null,
-        assinatura,
+        ...conteudo,
+        titulo: aplicarVariaveis(conteudo.titulo, user),
+        corpo: aplicarVariaveis(conteudo.corpo, user),
+        botaoTexto: aplicarVariaveis(conteudo.botaoTexto, user),
+        rodape: aplicarVariaveis(conteudo.rodape, user),
       });
     },
-    [modo, htmlCru, saudacao, corpo, botao, assinatura],
+    [modo, htmlCru, conteudo],
   );
 
   const assuntoDe = useCallback((user: Profile) => aplicarVariaveis(assunto, user).trim(), [assunto]);
@@ -131,7 +129,7 @@ export default function EmailBlast() {
     return htmlDe(exemplo).length * destinatarios.length;
   }, [destinatarios.length, exemplo, htmlDe]);
 
-  const conteudoPreenchido = modo === 'html' ? htmlCru.trim().length > 0 : corpo.trim().length > 0;
+  const conteudoPreenchido = modo === 'html' ? htmlCru.trim().length > 0 : conteudo.corpo.trim().length > 0;
   const podeAvancar =
     passo === 1 ? assunto.trim().length > 0 && conteudoPreenchido : destinatarios.length > 0;
 
@@ -160,9 +158,8 @@ export default function EmailBlast() {
         );
         setTitulo('');
         setAssunto('');
-        setCorpo('');
+        setConteudo(CONTEUDO_PADRAO);
         setHtmlCru('');
-        setBotao({ texto: '', url: '' });
         setPasso(1);
       } else {
         toast.error(resultado.detalhe);
@@ -244,14 +241,8 @@ export default function EmailBlast() {
             onAssuntoChange={setAssunto}
             modo={modo}
             onModoChange={setModo}
-            saudacao={saudacao}
-            onSaudacaoChange={setSaudacao}
-            corpo={corpo}
-            onCorpoChange={setCorpo}
-            botao={botao}
-            onBotaoChange={setBotao}
-            assinatura={assinatura}
-            onAssinaturaChange={setAssinatura}
+            conteudo={conteudo}
+            onConteudoChange={setConteudo}
             htmlCru={htmlCru}
             onHtmlCruChange={setHtmlCru}
             exemplo={exemplo}
