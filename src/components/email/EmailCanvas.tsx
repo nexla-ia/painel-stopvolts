@@ -1,20 +1,17 @@
 import { CSSProperties, useEffect, useRef } from 'react';
-import { ConteudoEmail } from '../../lib/email';
-import { Image as ImageIcon, Link2, Smile } from 'lucide-react';
+import { CORES_EMAIL, ConteudoEmail, TONS, TomEmail } from '../../lib/email';
+import { Link2 } from 'lucide-react';
 
 interface EmailCanvasProps {
   conteudo: ConteudoEmail;
   onChange: (c: ConteudoEmail) => void;
 }
 
-/** Emojis usuais para o círculo do topo. */
-const EMOJIS = ['💡', '⚡', '✅', '📢', '🎉', '💰', '📊', '🔔', ''];
-
 /**
  * Campo de texto que cresce com o conteúdo.
  *
- * Um textarea de altura fixa quebraria a ilusão de estar escrevendo dentro do
- * e-mail — o texto rolaria dentro de uma caixa em vez de empurrar o cartão.
+ * Um textarea de altura fixa quebraria a ideia de estar escrevendo dentro do
+ * e-mail — o texto rolaria numa caixa em vez de empurrar o cartão para baixo.
  */
 function AutoTextarea({
   value,
@@ -50,32 +47,53 @@ function AutoTextarea({
       aria-label={ariaLabel}
       style={style}
       className={`w-full bg-transparent border-0 outline-none resize-none overflow-hidden rounded
-        focus:ring-2 focus:ring-[#B45F04]/40 hover:bg-black/[0.03] transition-colors ${className}`}
+        hover:bg-black/[0.03] focus:bg-black/[0.03] focus:ring-2 focus:ring-black/10 transition-colors ${className}`}
     />
   );
 }
 
 /**
- * O e-mail renderizado com os textos editáveis no lugar.
+ * O e-mail montado, com os textos editáveis no próprio lugar.
  *
- * As cores são fixas de propósito: isto reproduz o e-mail como ele chega na
- * caixa de entrada, que não muda com o tema do painel.
+ * As cores são literais de propósito: isto reproduz o e-mail como ele chega na
+ * caixa de entrada, que não acompanha o tema do painel.
  */
 export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
   const set = (campo: keyof ConteudoEmail, valor: string) => onChange({ ...conteudo, [campo]: valor });
-
-  const campoBase = 'placeholder:text-[#C4C8CE]';
+  const tom = TONS[conteudo.tom] ?? TONS.verde;
+  const c = CORES_EMAIL;
 
   return (
     <div className="rounded-xl border-2 border-edge overflow-hidden">
-      <div className="px-4 py-2.5 bg-edge/20 border-b border-edge flex items-center gap-2">
-        <span className="text-sm text-muted">Clique em qualquer texto abaixo para editar</span>
+      {/* Barra de ferramentas do e-mail */}
+      <div className="px-4 py-3 bg-edge/20 border-b border-edge flex flex-wrap items-center gap-x-6 gap-y-3">
+        <span className="text-sm text-muted">Clique em qualquer texto para editar</span>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-sm text-muted">Cor de destaque</span>
+          <div className="flex gap-1.5">
+            {(Object.keys(TONS) as TomEmail[]).map(chave => (
+              <button
+                key={chave}
+                type="button"
+                onClick={() => set('tom', chave)}
+                title={TONS[chave].rotulo}
+                aria-label={`Cor ${TONS[chave].rotulo}`}
+                aria-pressed={conteudo.tom === chave}
+                className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ${
+                  conteudo.tom === chave ? 'ring-2 ring-offset-2 ring-offset-panel ring-fg/40' : ''
+                }`}
+                style={{ background: TONS[chave].cor }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Fundo do e-mail */}
-      <div className="p-6 sm:p-10" style={{ background: '#F9FAFB' }}>
+      <div className="p-6 sm:p-10" style={{ background: c.fundo }}>
         <div className="mx-auto" style={{ maxWidth: '480px' }}>
-          {/* Cabeçalho com logo */}
+          {/* Cabeçalho */}
           <div className="text-center mb-7">
             {conteudo.logoUrl.trim() ? (
               <img
@@ -86,14 +104,14 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
             ) : (
               <div
                 className="w-12 h-12 rounded-[10px] mx-auto mb-3 flex items-center justify-center"
-                style={{ background: '#B45F04' }}
+                style={{ background: tom.cor }}
               >
                 <span className="text-white text-2xl font-bold">S</span>
               </div>
             )}
             <span
               className="text-[13px] font-semibold uppercase"
-              style={{ color: '#9CA3AF', letterSpacing: '0.5px' }}
+              style={{ color: c.fraco, letterSpacing: '0.5px' }}
             >
               StopVolts
             </span>
@@ -101,95 +119,72 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
 
           {/* Cartão */}
           <div
-            className="rounded-2xl px-8 py-9"
+            className="rounded-2xl overflow-hidden"
             style={{
-              background: '#FFFFFF',
+              background: c.cartao,
               boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)',
             }}
           >
-            {/* Emoji */}
-            <div className="flex justify-center mb-5">
-              <div className="relative group">
+            <div style={{ height: '4px', background: tom.cor }} />
+
+            <div className="px-8 py-9">
+              <AutoTextarea
+                value={conteudo.titulo}
+                onChange={v => set('titulo', v)}
+                placeholder="Título do e-mail"
+                ariaLabel="Título do e-mail"
+                className="text-center font-bold text-[21px] leading-tight mb-4 px-1 placeholder:text-[#C4C8CE]"
+                style={{ color: c.titulo }}
+              />
+
+              <AutoTextarea
+                value={conteudo.corpo}
+                onChange={v => set('corpo', v)}
+                placeholder="Escreva a mensagem. Deixe uma linha em branco entre parágrafos."
+                ariaLabel="Mensagem do e-mail"
+                className="text-center text-[15px] leading-[1.7] mb-7 px-1 placeholder:text-[#C4C8CE]"
+                style={{ color: c.texto }}
+              />
+
+              <div className="text-center space-y-2.5">
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px]"
-                  style={{ background: '#FEF3C7' }}
+                  className="inline-block rounded-[10px]"
+                  style={{
+                    background: conteudo.botaoTexto.trim() ? tom.cor : 'transparent',
+                    boxShadow: conteudo.botaoTexto.trim() ? `0 2px 6px ${tom.sombra}` : 'none',
+                  }}
                 >
-                  {conteudo.emoji || <Smile className="w-5 h-5" style={{ color: '#B45F04' }} />}
+                  <input
+                    type="text"
+                    value={conteudo.botaoTexto}
+                    onChange={e => set('botaoTexto', e.target.value)}
+                    placeholder="Texto do botão"
+                    aria-label="Texto do botão"
+                    size={Math.max(conteudo.botaoTexto.length || 14, 10)}
+                    className="bg-transparent border-0 outline-none text-center font-semibold text-[15px] py-3.5 px-8 rounded-[10px] focus:ring-2 focus:ring-white/60"
+                    style={{ color: conteudo.botaoTexto.trim() ? '#FFFFFF' : c.fraco }}
+                  />
                 </div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-10 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                  <div className="flex gap-1 p-1.5 rounded-lg bg-elevated border border-edge shadow-lg">
-                    {EMOJIS.map(e => (
-                      <button
-                        key={e || 'nenhum'}
-                        type="button"
-                        onClick={() => set('emoji', e)}
-                        title={e || 'Sem ícone'}
-                        className={`w-8 h-8 rounded flex items-center justify-center text-lg hover:bg-edge/50 transition-colors ${
-                          conteudo.emoji === e ? 'bg-volt-soft' : ''
-                        }`}
-                      >
-                        {e || <span className="text-xs text-faint">—</span>}
-                      </button>
-                    ))}
-                  </div>
+
+                <div className="flex items-center justify-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: c.fraco }} />
+                  <input
+                    type="url"
+                    value={conteudo.botaoUrl}
+                    onChange={e => set('botaoUrl', e.target.value)}
+                    placeholder="Endereço para onde o botão leva"
+                    aria-label="Endereço do botão"
+                    className="bg-transparent border-0 outline-none text-center text-xs rounded px-2 py-1 w-72 max-w-full hover:bg-black/[0.03] focus:bg-black/[0.03] focus:ring-2 focus:ring-black/10 transition-colors"
+                    style={{ color: c.texto }}
+                  />
                 </div>
+
+                {conteudo.botaoTexto.trim() && !conteudo.botaoUrl.trim() && (
+                  <p className="text-xs" style={{ color: tom.cor }}>
+                    Sem endereço, o botão não entra no e-mail.
+                  </p>
+                )}
               </div>
-            </div>
-
-            <AutoTextarea
-              value={conteudo.titulo}
-              onChange={v => set('titulo', v)}
-              placeholder="Título do e-mail"
-              ariaLabel="Título do e-mail"
-              className={`${campoBase} text-center font-bold text-[21px] leading-tight mb-4 px-1`}
-              style={{ color: '#111827' }}
-            />
-
-            <AutoTextarea
-              value={conteudo.corpo}
-              onChange={v => set('corpo', v)}
-              placeholder="Escreva aqui a mensagem. Deixe uma linha em branco para separar parágrafos."
-              ariaLabel="Mensagem do e-mail"
-              className={`${campoBase} text-center text-[15px] leading-[1.7] mb-7 px-1`}
-              style={{ color: '#6B7280' }}
-            />
-
-            {/* Botão */}
-            <div className="text-center space-y-2.5">
-              <div
-                className="inline-block rounded-[10px] px-2"
-                style={{ background: conteudo.botaoTexto.trim() ? '#B45F04' : 'transparent' }}
-              >
-                <input
-                  type="text"
-                  value={conteudo.botaoTexto}
-                  onChange={e => set('botaoTexto', e.target.value)}
-                  placeholder="Texto do botão"
-                  aria-label="Texto do botão"
-                  size={Math.max(conteudo.botaoTexto.length || 14, 8)}
-                  className="bg-transparent border-0 outline-none text-center font-semibold text-[15px] py-3.5 px-6 rounded-[10px] focus:ring-2 focus:ring-white/50"
-                  style={{ color: conteudo.botaoTexto.trim() ? '#FFFFFF' : '#9CA3AF' }}
-                />
-              </div>
-
-              <div className="flex items-center justify-center gap-2">
-                <Link2 className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />
-                <input
-                  type="url"
-                  value={conteudo.botaoUrl}
-                  onChange={e => set('botaoUrl', e.target.value)}
-                  placeholder="Para onde o botão leva (https://...)"
-                  aria-label="Endereço do botão"
-                  className="bg-transparent border-0 outline-none text-center text-xs rounded px-2 py-1 w-64 max-w-full focus:ring-2 focus:ring-[#B45F04]/40 hover:bg-black/[0.03] transition-colors"
-                  style={{ color: '#6B7280' }}
-                />
-              </div>
-
-              {!conteudo.botaoUrl.trim() && conteudo.botaoTexto.trim() && (
-                <p className="text-xs" style={{ color: '#B45F04' }}>
-                  Sem endereço, o botão não entra no e-mail.
-                </p>
-              )}
             </div>
           </div>
 
@@ -200,32 +195,29 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
               onChange={v => set('rodape', v)}
               placeholder="Rodapé"
               ariaLabel="Rodapé do e-mail"
-              className={`${campoBase} text-center text-xs px-1`}
-              style={{ color: '#9CA3AF' }}
-            />
-          </div>
-
-          {/* Logo: fora do e-mail, só configuração */}
-          <div className="mt-8 pt-5 border-t" style={{ borderColor: '#E5E7EB' }}>
-            <label
-              className="flex items-center gap-2 text-xs mb-1.5"
-              style={{ color: '#6B7280' }}
-              htmlFor="email-logo"
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              Endereço do logo (precisa estar hospedado na internet)
-            </label>
-            <input
-              id="email-logo"
-              type="url"
-              value={conteudo.logoUrl}
-              onChange={e => set('logoUrl', e.target.value)}
-              placeholder="https://... /logonew.png — deixe vazio para usar o bloco laranja"
-              className="w-full bg-white border rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[#B45F04]/40"
-              style={{ borderColor: '#E5E7EB', color: '#374151' }}
+              className="text-center text-xs px-1 placeholder:text-[#C4C8CE]"
+              style={{ color: c.fraco }}
             />
           </div>
         </div>
+      </div>
+
+      {/* Ajuste que não faz parte do e-mail */}
+      <div className="px-4 py-3 bg-edge/20 border-t border-edge">
+        <label
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
+          htmlFor="email-logo"
+        >
+          <span className="shrink-0">Logo (precisa estar hospedado na internet)</span>
+          <input
+            id="email-logo"
+            type="url"
+            value={conteudo.logoUrl}
+            onChange={e => set('logoUrl', e.target.value)}
+            placeholder="https://.../logo.png — vazio usa o quadrado com a inicial"
+            className="flex-1 min-w-[16rem] bg-ink border border-edge rounded-md px-3 py-2 text-sm text-fg placeholder-faint outline-none focus:border-volt focus:ring-2 focus:ring-volt/20 transition-colors"
+          />
+        </label>
       </div>
     </div>
   );
