@@ -212,7 +212,7 @@ export default function Users() {
 
   return (
     // Bloco de topo com altura natural; o SplitView consome a altura restante.
-    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+    <div className="flex flex-col gap-6 desk:h-full desk:min-h-0">
       <PageHeader
         eyebrow="Base de Usuários"
         title="Usuários"
@@ -350,7 +350,7 @@ export default function Users() {
           />
         </Panel>
       ) : (
-        <div className="lg:flex-1 lg:min-h-0">
+        <div className="desk:flex-1 desk:min-h-0">
           <SplitView
             listLabel={`${filteredUsers.length} usuários cadastrados`}
             list={filteredUsers.map(user => {

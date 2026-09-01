@@ -143,7 +143,7 @@ export default function Tariffs() {
       formData.tariff_flag !== selectedTariff.tariff_flag);
 
   return (
-    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+    <div className="flex flex-col gap-6 desk:h-full desk:min-h-0">
       <PageHeader
         eyebrow="Tarifação"
         title="Tarifas de Energia"
@@ -211,7 +211,7 @@ export default function Tariffs() {
           />
         </Panel>
       ) : (
-        <div className="lg:flex-1 lg:min-h-0">
+        <div className="desk:flex-1 desk:min-h-0">
           <SplitView
             listLabel={`${filteredTariffs.length} estados`}
             list={filteredTariffs.map(tariff => {
@@ -352,7 +352,7 @@ export default function Tariffs() {
                         Vigência
                       </h3>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <p className="text-[11px] uppercase tracking-wider text-faint mb-0.5">Válida desde</p>
                         <p className="text-sm font-medium text-fg">

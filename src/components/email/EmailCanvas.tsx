@@ -142,7 +142,7 @@ export default function EmailCanvas({ conteudo, onChange }: EmailCanvasProps) {
                     placeholder="Texto do botão"
                     aria-label="Texto do botão"
                     size={Math.max(conteudo.botaoTexto.length || 14, 10)}
-                    className="bg-transparent border-0 outline-none text-center font-semibold text-[15px] py-3.5 px-8 rounded-[10px] focus:ring-2 focus:ring-white/60"
+                    className="bg-transparent border-0 outline-none text-center font-semibold text-[15px] py-3.5 px-8 rounded-[10px] max-w-full focus:ring-2 focus:ring-white/60"
                     style={{ color: conteudo.botaoTexto.trim() ? '#FFFFFF' : c.fraco }}
                   />
                 </div>

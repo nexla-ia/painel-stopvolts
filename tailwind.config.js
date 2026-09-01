@@ -7,6 +7,18 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      screens: {
+        /*
+         * Tela com espaço de sobra para o modo de altura travada.
+         *
+         * Exige largura E altura. Um notebook 1366x768 passa na largura mas
+         * não na altura: com o shell travado ali, o cabeçalho e os filtros
+         * comiam quase tudo, sobrava pouco mais de 150px para a lista e não
+         * havia como rolar para alcançar o resto. Abaixo deste ponto a página
+         * volta a rolar por inteiro.
+         */
+        desk: { raw: '(min-width: 1280px) and (min-height: 860px)' },
+      },
       colors: {
         ink: withOpacity('--bg'),
         panel: withOpacity('--bg-panel'),

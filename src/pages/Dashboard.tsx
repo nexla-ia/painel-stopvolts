@@ -132,7 +132,7 @@ export default function Dashboard() {
 
   return (
     // O <main> não rola no desktop, então o painel gerencia o próprio scroll.
-    <div className="space-y-6 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
+    <div className="space-y-6 desk:h-full desk:overflow-y-auto desk:overscroll-contain">
       <PageHeader
         eyebrow="Visão Geral"
         title="Painel de Controle"

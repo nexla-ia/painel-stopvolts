@@ -38,9 +38,15 @@ export default function Layout() {
     }`;
 
   return (
-    // App shell de altura fixa: a janela nunca rola. Só o <main> rola por dentro,
-    // então a sidebar e o cabeçalho mobile ficam sempre visíveis.
-    <div className="h-screen flex flex-col overflow-hidden bg-ink">
+    /*
+      App shell de altura fixa: a janela nunca rola. Só o <main> rola por
+      dentro, então a sidebar e o cabeçalho mobile ficam sempre visíveis.
+
+      `h-dvh` em vez de `h-screen`: no celular, 100vh conta a altura com a
+      barra do navegador retraída, então parte do conteúdo ficava embaixo dela
+      — e com overflow-hidden aqui, sem como alcançar.
+    */
+    <div className="h-dvh flex flex-col overflow-hidden bg-ink">
       <div className="lg:hidden bg-panel border-b border-edge px-4 py-3 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2.5">
           <div className="bg-volt p-1.5 rounded-md">
@@ -48,11 +54,7 @@ export default function Layout() {
           </div>
           <span className="font-display font-bold text-lg text-fg leading-none">StopVolts</span>
         </div>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="text-fg"
-          aria-label="Abrir menu"
-        >
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-fg" aria-label="Abrir menu">
           <Menu className="w-6 h-6" />
         </button>
       </div>
@@ -74,13 +76,17 @@ export default function Layout() {
                 </div>
                 <div>
                   <h1 className="font-display font-bold text-xl text-fg leading-none">StopVolts</h1>
-                  <p className="text-[11px] mt-0.5 font-mono uppercase tracking-wider text-faint">Painel Admin</p>
+                  <p className="text-[11px] mt-0.5 font-mono uppercase tracking-wider text-faint">
+                    Painel Admin
+                  </p>
                 </div>
               </div>
             </div>
 
             <nav className="flex-1 p-4 space-y-1">
-              <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">Navegação</p>
+              <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
+                Navegação
+              </p>
               {navigation.map(item => {
                 const Icon = item.icon;
                 return (
@@ -122,17 +128,14 @@ export default function Layout() {
         </aside>
 
         {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
 
         {/* No mobile o próprio <main> rola. No desktop ele fica travado e cada
             página decide o que rola por dentro — nas telas lista/detalhe só os
             dois painéis rolam, mantendo cabeçalho e filtros sempre visíveis. */}
-        <main className="flex-1 min-w-0 overflow-y-auto lg:overflow-hidden p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto lg:h-full">
+        <main className="flex-1 min-w-0 overflow-y-auto desk:overflow-hidden p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto desk:h-full">
             <Outlet />
           </div>
         </main>

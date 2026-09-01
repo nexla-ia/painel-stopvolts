@@ -204,7 +204,7 @@ export default function EmailBlast() {
   }
 
   return (
-    <div className="space-y-6 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
+    <div className="space-y-6 desk:h-full desk:overflow-y-auto desk:overscroll-contain">
       <PageHeader
         eyebrow="Comunicação"
         title="E-mails"

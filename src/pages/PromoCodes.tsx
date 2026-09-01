@@ -169,7 +169,7 @@ export default function PromoCodes() {
   );
 
   return (
-    <div className="flex flex-col gap-6 lg:h-full lg:min-h-0">
+    <div className="flex flex-col gap-6 desk:h-full desk:min-h-0">
       <PageHeader
         eyebrow="Growth"
         title="Códigos Promocionais"
@@ -240,7 +240,7 @@ export default function PromoCodes() {
           />
         </Panel>
       ) : (
-        <div className="lg:flex-1 lg:min-h-0">
+        <div className="desk:flex-1 desk:min-h-0">
           <SplitView
             listLabel={`${filteredCodes.length} códigos`}
             list={filteredCodes.map(code => {
@@ -343,7 +343,7 @@ export default function PromoCodes() {
                         Detalhes
                       </h3>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <p className="text-[11px] uppercase tracking-wider text-faint mb-0.5">
                           Influenciador

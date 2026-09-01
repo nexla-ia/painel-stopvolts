@@ -19,7 +19,14 @@ interface StatCardProps {
   index?: number;
 }
 
-export default function StatCard({ icon: Icon, label, value, sublabel, accent = 'volt', index = 0 }: StatCardProps) {
+export default function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+  accent = 'volt',
+  index = 0,
+}: StatCardProps) {
   return (
     <div
       className="group rounded-lg border border-edge bg-panel p-5 transition-colors hover:border-edge-strong animate-fade-up"
@@ -31,7 +38,9 @@ export default function StatCard({ icon: Icon, label, value, sublabel, accent = 
         </div>
       </div>
       <p className="text-xs uppercase tracking-wider text-muted mb-1">{label}</p>
-      <p className="font-display font-bold text-4xl leading-none text-fg font-tabular">{value}</p>
+      <p className="font-display font-bold text-3xl sm:text-4xl leading-none text-fg font-tabular truncate">
+        {value}
+      </p>
       {sublabel && <p className="text-xs mt-2.5 text-faint">{sublabel}</p>}
     </div>
   );

@@ -14,7 +14,9 @@ export default function PageHeader({ eyebrow, title, subtitle, actions }: PageHe
         {eyebrow && (
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-volt mb-1.5">{eyebrow}</p>
         )}
-        <h1 className="font-display font-bold text-4xl leading-none text-fg">{title}</h1>
+        <h1 className="font-display font-bold text-3xl sm:text-4xl leading-tight text-fg text-balance">
+          {title}
+        </h1>
         {subtitle && <p className="mt-2 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-3">{actions}</div>}

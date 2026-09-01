@@ -146,14 +146,14 @@ export default function UserDetailPanel({ user, stats, categories, plans }: User
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Section icon={Mail} title="Contato">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Telefone" value={user.phone || '-'} />
             <Field label="Localização" value={location} />
           </div>
         </Section>
 
         <Section icon={Calendar} title="Cadastro & Login">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Registrado em" value={formatDate(user.created_at)} />
             <Field label="Último Login" value={formatDateTime(user.last_login_at)} />
             <Field
@@ -170,7 +170,7 @@ export default function UserDetailPanel({ user, stats, categories, plans }: User
         </Section>
 
         <Section icon={Crown} title="Plano & Assinatura">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Plano" value={planLabel(user.plan, plans)} />
             <Field label="Limite de Dispositivos" value={user.device_limit} />
             {hasSubscription ? (
@@ -182,7 +182,7 @@ export default function UserDetailPanel({ user, stats, categories, plans }: User
                 />
               </>
             ) : (
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <p className="text-[11px] uppercase tracking-wider text-faint mb-0.5">Assinatura</p>
                 <p className="text-sm text-muted">
                   Nunca assinou — conta no plano gratuito, sem cobrança registrada.
@@ -203,7 +203,7 @@ export default function UserDetailPanel({ user, stats, categories, plans }: User
         </Section>
 
         <Section icon={Zap} title="Consumo & Engajamento">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field
               label="Consumo Estimado"
               value={`${(stats?.estimated_monthly_kwh ?? 0).toFixed(1)} kWh/mês`}

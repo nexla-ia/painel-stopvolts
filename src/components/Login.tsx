@@ -26,7 +26,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-ink flex items-center justify-center p-4 relative overflow-hidden">
+    /*
+      `overflow-x-hidden` no lugar de `overflow-hidden`: o corte existe para
+      conter o brilho de fundo, mas na horizontal. Cortando também na vertical,
+      o cartão ficava sem saída em tela baixa — celular deitado — e o botão de
+      entrar não aparecia.
+    */
+    <div className="min-h-dvh bg-ink flex items-center justify-center p-4 py-10 relative overflow-x-hidden">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -52,12 +58,8 @@ export default function Login() {
           className="rounded-lg border border-edge bg-panel shadow-2xl shadow-black/40 p-8 animate-fade-up"
           style={{ animationDelay: '80ms' }}
         >
-          <h1 className="font-display font-bold text-3xl text-center text-fg leading-none">
-            StopVolts
-          </h1>
-          <p className="text-center text-sm text-muted mt-2 mb-8">
-            Painel administrativo · acesso restrito
-          </p>
+          <h1 className="font-display font-bold text-3xl text-center text-fg leading-none">StopVolts</h1>
+          <p className="text-center text-sm text-muted mt-2 mb-8">Painel administrativo · acesso restrito</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (

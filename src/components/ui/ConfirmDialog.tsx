@@ -37,13 +37,14 @@ export default function ConfirmDialog({
   }, [onCancel, pending]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    /* Overlay rolável: em tela baixa o diálogo não pode esconder os botões. */
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 overflow-y-auto overscroll-contain p-4 flex items-start sm:items-center justify-center">
       <div
         ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-lg border border-edge bg-elevated shadow-2xl animate-fade-up p-6"
+        className="w-full max-w-md my-auto rounded-lg border border-edge bg-elevated shadow-2xl animate-fade-up p-6"
       >
         <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-danger-soft mb-4">
           <AlertTriangle className="w-6 h-6 text-danger" />
