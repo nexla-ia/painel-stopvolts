@@ -124,6 +124,20 @@ export interface UserStats {
   leaderboard_rank: number | null;
 }
 
+/** Perfil com o resumo de `user_stats_view` já anexado. */
+export interface UserRow extends Profile {
+  stats?: UserStats;
+}
+
+/** Dispositivos cadastrados pela conta, 0 quando a view não trouxe a linha. */
+export const deviceCountOf = (user: UserRow) => user.stats?.total_devices ?? 0;
+
+/** Estourou o limite do plano — usa mais dispositivos do que o plano permite. */
+export const isOverLimit = (user: UserRow) => deviceCountOf(user) > user.device_limit;
+
+/** Bateu exatamente o teto do plano — candidato natural a upgrade. */
+export const isAtLimit = (user: UserRow) => deviceCountOf(user) === user.device_limit;
+
 export interface EnergyGoal {
   id: string;
   user_id: string;

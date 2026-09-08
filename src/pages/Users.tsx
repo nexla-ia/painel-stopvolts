@@ -2,13 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   supabase,
   Profile,
+  UserRow,
   UserStats,
   DeviceCategory,
   SubscriptionPlan,
   PROFILE_COLUMNS,
   planLabel,
   isPaidPlan,
+  deviceCountOf,
+  isOverLimit,
+  isAtLimit,
 } from '../lib/supabase';
+import { exportarUsuarios } from '../lib/exportarUsuarios';
 import { useToast } from '../contexts/ToastContext';
 import {
   Search,
@@ -19,6 +24,9 @@ import {
   Cpu,
   AlertTriangle,
   ShieldAlert,
+  LayoutPanelLeft,
+  Table2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
@@ -27,20 +35,25 @@ import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import UserDetailPanel from '../components/UserDetailPanel';
+import UsersTable from '../components/UsersTable';
 import SplitView from '../components/ui/SplitView';
 import { inputClass, selectClass, splitItemClass } from '../components/ui/classes';
 
-interface UserRow extends Profile {
-  stats?: UserStats;
-}
-
 type SortKey = 'recent' | 'devices' | 'lastLogin' | 'logins';
 
-const deviceCountOf = (user: UserRow) => user.stats?.total_devices ?? 0;
-/** Estourou o limite do plano — usa mais dispositivos do que o plano permite. */
-const isOverLimit = (user: UserRow) => deviceCountOf(user) > user.device_limit;
-/** Bateu exatamente o teto do plano — candidato natural a upgrade. */
-const isAtLimit = (user: UserRow) => deviceCountOf(user) === user.device_limit;
+/** Ficha = lista + detalhe; tabela = planilha na tela, com todas as colunas. */
+type Visao = 'ficha' | 'tabela';
+
+const CHAVE_VISAO = 'stopvolts:usuarios:visao';
+
+/** Lê a preferência salva; navegador sem storage (aba anônima) cai no padrão. */
+function visaoSalva(): Visao {
+  try {
+    return localStorage.getItem(CHAVE_VISAO) === 'tabela' ? 'tabela' : 'ficha';
+  } catch {
+    return 'ficha';
+  }
+}
 
 export default function Users() {
   const toast = useToast();
@@ -56,10 +69,20 @@ export default function Users() {
     'all',
   );
   const [sortKey, setSortKey] = useState<SortKey>('recent');
+  const [visao, setVisao] = useState<Visao>(visaoSalva);
 
   useEffect(() => {
     loadUsers();
   }, []);
+
+  const trocarVisao = (proxima: Visao) => {
+    setVisao(proxima);
+    try {
+      localStorage.setItem(CHAVE_VISAO, proxima);
+    } catch {
+      /* Sem storage a escolha vale só nesta sessão — não é motivo para falhar. */
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -168,6 +191,24 @@ export default function Users() {
     });
   }, [users, searchTerm, planFilter, stateFilter, engagementFilter, sortKey]);
 
+  const exportar = () => {
+    if (filteredUsers.length === 0) {
+      toast.info('Nenhum usuário no filtro atual para exportar.');
+      return;
+    }
+    try {
+      exportarUsuarios(filteredUsers, plans);
+      toast.success(
+        `Planilha gerada com ${filteredUsers.length} ${
+          filteredUsers.length === 1 ? 'usuário' : 'usuários'
+        }.`,
+      );
+    } catch (error) {
+      console.error('Error exporting users:', error);
+      toast.error('Não foi possível gerar a planilha.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -210,8 +251,22 @@ export default function Users() {
 
   const selectedUser = filteredUsers.find(u => u.id === selectedUserId) || filteredUsers[0] || null;
 
+  const botaoVisao = (alvo: Visao, Icone: typeof LayoutPanelLeft, rotulo: string) => (
+    <button
+      type="button"
+      onClick={() => trocarVisao(alvo)}
+      aria-pressed={visao === alvo}
+      className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold transition-colors ${
+        visao === alvo ? 'bg-volt text-volt-ink shadow-sm' : 'text-muted hover:text-fg'
+      }`}
+    >
+      <Icone className="w-3.5 h-3.5" />
+      {rotulo}
+    </button>
+  );
+
   return (
-    // Bloco de topo com altura natural; o SplitView consome a altura restante.
+    // Bloco de topo com altura natural; a lista consome a altura restante.
     <div className="flex flex-col gap-6 desk:h-full desk:min-h-0">
       <PageHeader
         eyebrow="Base de Usuários"
@@ -332,12 +387,31 @@ export default function Users() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <Filter className="w-3.5 h-3.5 shrink-0" />
-          <span>
-            Mostrando {filteredUsers.length} de {users.length} usuários
-            {neverLoggedIn > 0 && ` · ${neverLoggedIn} nunca fizeram login`}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <Filter className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              Mostrando {filteredUsers.length} de {users.length} usuários
+              {neverLoggedIn > 0 && ` · ${neverLoggedIn} nunca fizeram login`}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 p-1 rounded-md bg-edge/30" role="group" aria-label="Modo de exibição">
+              {botaoVisao('ficha', LayoutPanelLeft, 'Fichas')}
+              {botaoVisao('tabela', Table2, 'Tabela')}
+            </div>
+
+            <button
+              type="button"
+              onClick={exportar}
+              title={`Baixa uma planilha .xlsx com os ${filteredUsers.length} usuários que passaram pelos filtros`}
+              className="inline-flex items-center gap-2 rounded-md bg-volt px-4 py-2 text-sm font-semibold text-volt-ink transition-colors hover:bg-volt-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-volt/50"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Exportar Excel
+            </button>
+          </div>
         </div>
       </Panel>
 
@@ -351,62 +425,76 @@ export default function Users() {
         </Panel>
       ) : (
         <div className="desk:flex-1 desk:min-h-0">
-          <SplitView
-            listLabel={`${filteredUsers.length} usuários cadastrados`}
-            list={filteredUsers.map(user => {
-              const isSelected = selectedUser?.id === user.id;
-              const deviceCount = deviceCountOf(user);
-              const over = isOverLimit(user);
-              const atLimit = isAtLimit(user);
+          {visao === 'tabela' ? (
+            <UsersTable
+              users={filteredUsers}
+              plans={plans}
+              selectedUserId={selectedUser?.id ?? null}
+              onSelect={id => {
+                setSelectedUserId(id);
+                trocarVisao('ficha');
+              }}
+            />
+          ) : (
+            <SplitView
+              listLabel={`${filteredUsers.length} usuários cadastrados`}
+              list={filteredUsers.map(user => {
+                const isSelected = selectedUser?.id === user.id;
+                const deviceCount = deviceCountOf(user);
+                const over = isOverLimit(user);
+                const atLimit = isAtLimit(user);
 
-              return (
-                <button
-                  key={user.id}
-                  onClick={() => setSelectedUserId(user.id)}
-                  className={splitItemClass(isSelected, over)}
-                >
-                  <div className="shrink-0 h-9 w-9 bg-volt-soft rounded-full flex items-center justify-center">
-                    <span className="text-volt font-semibold text-sm">
-                      {user.full_name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-fg truncate">{user.full_name || 'Sem nome'}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge
-                        variant={over ? 'danger' : atLimit ? 'warning' : 'neutral'}
-                        icon={over ? <AlertTriangle className="w-3 h-3" /> : <Cpu className="w-3 h-3" />}
-                      >
-                        {deviceCount}/{user.device_limit}
-                      </Badge>
-                      <span className="text-[11px] text-faint truncate">
-                        {formatLastLogin(user.last_login_at)}
+                return (
+                  <button
+                    key={user.id}
+                    onClick={() => setSelectedUserId(user.id)}
+                    className={splitItemClass(isSelected, over)}
+                  >
+                    <div className="shrink-0 h-9 w-9 bg-volt-soft rounded-full flex items-center justify-center">
+                      <span className="text-volt font-semibold text-sm">
+                        {user.full_name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
                       </span>
                     </div>
-                  </div>
-                  {isPaidPlan(user.plan) && (
-                    <Crown
-                      className="w-3.5 h-3.5 text-warning shrink-0"
-                      aria-label={planLabel(user.plan, plans)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-fg truncate">{user.full_name || 'Sem nome'}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge
+                          variant={over ? 'danger' : atLimit ? 'warning' : 'neutral'}
+                          icon={over ? <AlertTriangle className="w-3 h-3" /> : <Cpu className="w-3 h-3" />}
+                        >
+                          {deviceCount}/{user.device_limit}
+                        </Badge>
+                        <span className="text-[11px] text-faint truncate">
+                          {formatLastLogin(user.last_login_at)}
+                        </span>
+                      </div>
+                    </div>
+                    {isPaidPlan(user.plan) && (
+                      <Crown
+                        className="w-3.5 h-3.5 text-warning shrink-0"
+                        aria-label={planLabel(user.plan, plans)}
+                      />
+                    )}
+                    <ChevronRight
+                      className={`w-4 h-4 shrink-0 transition-colors ${
+                        isSelected ? 'text-volt' : 'text-faint'
+                      }`}
                     />
-                  )}
-                  <ChevronRight
-                    className={`w-4 h-4 shrink-0 transition-colors ${isSelected ? 'text-volt' : 'text-faint'}`}
+                  </button>
+                );
+              })}
+              detail={
+                selectedUser && (
+                  <UserDetailPanel
+                    user={selectedUser}
+                    stats={selectedUser.stats}
+                    categories={categories}
+                    plans={plans}
                   />
-                </button>
-              );
-            })}
-            detail={
-              selectedUser && (
-                <UserDetailPanel
-                  user={selectedUser}
-                  stats={selectedUser.stats}
-                  categories={categories}
-                  plans={plans}
-                />
-              )
-            }
-          />
+                )
+              }
+            />
+          )}
         </div>
       )}
     </div>
