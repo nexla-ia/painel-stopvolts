@@ -8,6 +8,7 @@ import {
   SubscriptionPlan,
   planLabel,
   isPaidPlan,
+  isLegacyPlan,
 } from '../lib/supabase';
 import Badge from './ui/Badge';
 import Spinner from './ui/Spinner';
@@ -98,6 +99,7 @@ export default function UserDetailPanel({ user, stats, categories, plans }: User
   const overLimit = countedDevices > user.device_limit;
 
   const paid = isPaidPlan(user.plan);
+  const legacy = isLegacyPlan(user.plan, plans);
   const hasSubscription = Boolean(user.subscription_status || user.subscription_end_date);
   // Assinatura ativa registrada num perfil ainda marcado como gratuito indica
   // pagamento que não promoveu o plano — vale sinalizar em vez de esconder.
@@ -131,6 +133,7 @@ export default function UserDetailPanel({ user, stats, categories, plans }: User
             <Badge variant={paid ? 'warning' : 'info'} icon={paid && <Crown className="w-3 h-3" />}>
               {planLabel(user.plan, plans)}
             </Badge>
+            {legacy && <Badge variant="neutral">Descontinuado</Badge>}
             <Badge
               variant={user.role === 'admin' ? 'danger' : 'success'}
               icon={<ShieldCheck className="w-3 h-3" />}

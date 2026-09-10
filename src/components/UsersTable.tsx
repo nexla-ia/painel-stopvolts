@@ -4,11 +4,12 @@ import {
   SubscriptionPlan,
   planLabel,
   isPaidPlan,
+  isLegacyPlan,
   deviceCountOf,
   isOverLimit,
   isAtLimit,
 } from '../lib/supabase';
-import { ArrowDown, ArrowUp, ChevronsUpDown, ChevronRight, Crown, AlertTriangle } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronsUpDown, ChevronRight, Crown, History, AlertTriangle } from 'lucide-react';
 import Panel from './ui/Panel';
 import Badge from './ui/Badge';
 
@@ -108,14 +109,24 @@ export default function UsersTable({ users, plans, selectedUserId, onSelect }: U
         titulo: 'Plano',
         largura: 'w-[150px]',
         ordenar: u => planLabel(u.plan, plans).toLowerCase(),
-        celula: u => (
-          <Badge
-            variant={isPaidPlan(u.plan) ? 'warning' : 'info'}
-            icon={isPaidPlan(u.plan) ? <Crown className="w-3 h-3" /> : undefined}
-          >
-            {planLabel(u.plan, plans)}
-          </Badge>
-        ),
+        celula: u => {
+          const legado = isLegacyPlan(u.plan, plans);
+          return (
+            <Badge
+              variant={legado ? 'neutral' : isPaidPlan(u.plan) ? 'warning' : 'info'}
+              icon={
+                legado ? (
+                  <History className="w-3 h-3" />
+                ) : isPaidPlan(u.plan) ? (
+                  <Crown className="w-3 h-3" />
+                ) : undefined
+              }
+              title={legado ? 'Plano descontinuado — fora de venda' : undefined}
+            >
+              {planLabel(u.plan, plans)}
+            </Badge>
+          );
+        },
       },
       {
         chave: 'dispositivos',

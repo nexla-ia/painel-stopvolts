@@ -16,11 +16,13 @@ export interface Profile {
   phone: string | null;
   city: string | null;
   state: string | null;
+  /** Concessionária de energia escolhida pelo usuário. */
+  distributor: string | null;
   /**
-   * Nome do plano gravado em `profiles.plan`. Não é um enum fechado: a tabela
-   * `subscription_plans` define free/bronze/prata/ouro, mas a base ainda tem
-   * contas marcadas como 'premium', de uma nomenclatura antiga. Por isso é
-   * string e a exibição resolve o rótulo pela tabela de planos.
+   * Nome do plano gravado em `profiles.plan`. Vigentes: free/essencial/premium.
+   * Legado, fora de venda mas com contas ativas até vencer: bronze/prata/ouro
+   * — a tabela `subscription_plans` já marca isso em `is_active`, então a
+   * exibição não precisa hardcodar essa lista em lugar nenhum (ver `isLegacyPlan`).
    */
   plan: string;
   role: 'user' | 'admin';
@@ -31,9 +33,25 @@ export interface Profile {
   device_limit: number;
   subscription_status: string | null;
   subscription_end_date: string | null;
+  /** ID da assinatura no Mercado Pago — indício de pagamento de verdade, além do status. */
+  mercadopago_subscription_id: string | null;
+  onboarding_completed: boolean;
+  /** Tarifa de energia (R$/kWh) informada pelo usuário, não medição. */
+  electricity_rate: number | null;
+  /**
+   * Consumo/custo mensal digitado pelo usuário, copiado da conta de luz —
+   * não é medição. Muita conta fica com 0 ou desatualizado; ver
+   * `consumption_snapshots` para um retrato diário mais recente (quando existir).
+   */
   monthly_consumption_kwh: number | null;
   monthly_consumption_cost: number | null;
   estimated_savings: number | null;
+  /**
+   * `last_login_at`/`login_count` só existem a partir de agosto/2026 — quem já
+   * era usuário recebeu login_count = 1 como ponto de partida, não histórico
+   * real. Um valor baixo indica pouco tempo de medição, não necessariamente
+   * inatividade.
+   */
   last_login_at: string | null;
   login_count: number;
 }
@@ -53,6 +71,7 @@ export const PROFILE_COLUMNS = [
   'phone',
   'city',
   'state',
+  'distributor',
   'plan',
   'role',
   'promo_code_used',
@@ -62,6 +81,9 @@ export const PROFILE_COLUMNS = [
   'device_limit',
   'subscription_status',
   'subscription_end_date',
+  'mercadopago_subscription_id',
+  'onboarding_completed',
+  'electricity_rate',
   'monthly_consumption_kwh',
   'monthly_consumption_cost',
   'estimated_savings',
@@ -105,6 +127,15 @@ export function planLabel(plan: string, plans: Record<string, SubscriptionPlan>)
 
 /** Planos pagos aparecem destacados; o gratuito é o padrão da base. */
 export const isPaidPlan = (plan: string) => Boolean(plan) && plan !== 'free';
+
+/**
+ * Legado = plano fora de venda (bronze/prata/ouro), mas com contas ainda
+ * ativas até vencer. Lido de `subscription_plans.is_active`, não hardcodado
+ * aqui — se um plano some do catálogo ou um novo é criado, a tela acompanha
+ * sem precisar de deploy.
+ */
+export const isLegacyPlan = (plan: string, plans: Record<string, SubscriptionPlan>) =>
+  Boolean(plans[plan]) && plans[plan].is_active === false;
 
 export interface DeviceCategory {
   id: string;
@@ -169,6 +200,29 @@ export interface Tip {
   description: string;
   category: string;
   image_url: string | null;
+  created_at: string;
+}
+
+/**
+ * Retrato diário de consumo de um usuário. Tabela nova (set/2026): sem
+ * histórico retroativo, só existe para quem está com o app atualizado — a
+ * ausência de linhas não significa consumo zero, significa app desatualizado
+ * ou usuário que nunca abriu a tela de consumo.
+ */
+export interface ConsumptionSnapshot {
+  user_id: string;
+  snapshot_date: string;
+  total_kwh: number;
+  total_cost: number;
+  device_count: number;
+  tariff: number | null;
+  goal_kwh: number | null;
+}
+
+export interface PromoCodeUsage {
+  id: string;
+  promo_code_id: string;
+  user_id: string;
   created_at: string;
 }
 

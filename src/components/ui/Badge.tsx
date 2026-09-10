@@ -16,11 +16,14 @@ interface BadgeProps {
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Texto do tooltip nativo — útil quando o rótulo do badge sozinho não basta. */
+  title?: string;
 }
 
-export default function Badge({ variant = 'neutral', icon, children, className = '' }: BadgeProps) {
+export default function Badge({ variant = 'neutral', icon, children, className = '', title }: BadgeProps) {
   return (
     <span
+      title={title}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-semibold tracking-wide ${VARIANT_CLASSES[variant]} ${className}`}
     >
       {icon}

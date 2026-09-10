@@ -1,57 +1,59 @@
 import { PlanoContagem } from '../../lib/funnel';
-import { ROTULO_PLANO, PRECO_PLANO, Plano } from '../../lib/analyticsEvents';
+import { SubscriptionPlan, planLabel } from '../../lib/supabase';
 import EmptyState from '../ui/EmptyState';
-import { CreditCard } from 'lucide-react';
+import { CreditCard, History } from 'lucide-react';
 
 interface PlanComparisonProps {
   planos: PlanoContagem[];
+  plans: Record<string, SubscriptionPlan>;
 }
 
-const COR_PLANO: Record<string, string> = {
-  essencial: 'bg-brand',
-  premium: 'bg-indigo',
-};
+/* Paleta cíclica — não há um número fixo de planos (hoje 6, pode mudar sem
+   deploy do painel), então as cores são atribuídas por posição, não por nome. */
+const CORES = ['bg-brand', 'bg-indigo', 'bg-info', 'bg-warning', 'bg-danger', 'bg-faint'];
 
-const COR_TEXTO_PLANO: Record<string, string> = {
-  essencial: 'text-brand',
-  premium: 'text-indigo',
-};
-
-/** Quantos assinantes escolheram cada plano, com a receita mensal recorrente implícita. */
-export default function PlanComparison({ planos }: PlanComparisonProps) {
+export default function PlanComparison({ planos, plans }: PlanComparisonProps) {
   if (planos.length === 0) {
     return (
       <EmptyState
         icon={CreditCard}
-        title="Nenhuma assinatura no período"
-        description="Assim que houver compras concluídas, a comparação entre planos aparece aqui."
+        title="Nenhum usuário no período"
+        description="A distribuição de planos aparece aqui assim que houver cadastros no intervalo selecionado."
       />
     );
   }
 
-  const totalAssinantes = planos.reduce((soma, p) => soma + p.usuarios, 0);
-  const mrrTotal = planos.reduce((soma, p) => soma + p.usuarios * (PRECO_PLANO[p.plano as Plano] ?? 0), 0);
+  const total = planos.reduce((soma, p) => soma + p.usuarios, 0);
+  /* MRR real só faz sentido para quem está no plano E dentro do prazo —
+     esta soma é "se todo mundo no plano estivesse em dia", uma referência de
+     tamanho de carteira, não a receita ativa (essa é `calcularMonetizacao`). */
+  const valorDeCatalogo = planos.reduce((soma, p) => soma + p.usuarios * (p.precoMensal ?? 0), 0);
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3">
-        {planos.map(p => {
-          const rotulo = ROTULO_PLANO[p.plano as Plano] ?? p.plano;
-          const preco = PRECO_PLANO[p.plano as Plano];
-          const participacao = totalAssinantes > 0 ? Math.round((p.usuarios / totalAssinantes) * 100) : 0;
+        {planos.map((p, indice) => {
+          const participacao = total > 0 ? Math.round((p.usuarios / total) * 100) : 0;
+          const cor = CORES[indice % CORES.length];
 
           return (
             <div key={p.plano} className="rounded-md border border-edge p-4">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`w-2 h-2 rounded-full ${COR_PLANO[p.plano] ?? 'bg-faint'}`} />
-                <span className={`text-xs font-semibold uppercase tracking-wide ${COR_TEXTO_PLANO[p.plano] ?? 'text-muted'}`}>
-                  {rotulo}
+                <span className={`w-2 h-2 rounded-full ${cor}`} />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted truncate">
+                  {planLabel(p.plano, plans)}
                 </span>
+                {p.legado && (
+                  <History className="w-3 h-3 text-faint shrink-0" aria-label="Plano descontinuado" />
+                )}
               </div>
               <p className="font-display font-bold text-3xl leading-none text-fg font-tabular">{p.usuarios}</p>
               <p className="text-xs text-faint mt-1.5">
-                {participacao}% dos assinantes
-                {preco !== undefined && ` · R$ ${preco.toFixed(2).replace('.', ',')}/mês`}
+                {participacao}% da base
+                {p.precoMensal !== null &&
+                  p.precoMensal > 0 &&
+                  ` · R$ ${p.precoMensal.toFixed(2).replace('.', ',')}/mês`}
+                {p.legado && ' · descontinuado'}
               </p>
             </div>
           );
@@ -59,19 +61,19 @@ export default function PlanComparison({ planos }: PlanComparisonProps) {
       </div>
 
       <div className="h-2.5 rounded-full bg-edge overflow-hidden flex">
-        {planos.map(p => (
+        {planos.map((p, indice) => (
           <div
             key={p.plano}
-            className={COR_PLANO[p.plano] ?? 'bg-faint'}
-            style={{ width: `${totalAssinantes > 0 ? (p.usuarios / totalAssinantes) * 100 : 0}%` }}
+            className={CORES[indice % CORES.length]}
+            style={{ width: `${total > 0 ? (p.usuarios / total) * 100 : 0}%` }}
           />
         ))}
       </div>
 
       <div className="flex items-center justify-between text-xs pt-1">
-        <span className="text-faint">MRR estimado no período</span>
+        <span className="text-faint">Valor de catálogo da base (se todos estivessem em dia)</span>
         <span className="font-semibold text-fg font-tabular">
-          {mrrTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          {valorDeCatalogo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         </span>
       </div>
     </div>
