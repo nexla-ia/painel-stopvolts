@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, CSSProperties } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { EtapaFunil } from '../../lib/funnel';
 
@@ -44,9 +44,17 @@ export default function FunnelChart({ titulo, subtitulo, etapas, cor = 'brand' }
 
       <div className="flex flex-col items-stretch">
         {etapas.map((etapa, indice) => {
-          /* Largura mínima de 30% — sem isso, uma etapa com poucos usuários
-             vira uma lasca fina demais para caber o rótulo (o mais comprido
-             do funil é "Viu o consumo de um aparelho"). */
+          /*
+           * Largura mínima de 30% — sem isso, uma etapa com poucos usuários
+           * vira uma lasca fina demais para caber o rótulo e o número lado a
+           * lado sem brigar por espaço.
+           *
+           * O afunilamento só entra a partir de `sm:` (via a variável CSS
+           * `--largura`, só lida por essa classe). Abaixo disso a barra fica
+           * 100% da largura: em ~340px de tela, mesmo 30% já é estreito
+           * demais — o rótulo quebra em duas linhas e o número (que não
+           * quebra) acaba sobrepondo a segunda linha.
+           */
           const largura = Math.max((etapa.usuarios / maiorContagem) * 100, 30);
 
           return (
@@ -61,12 +69,19 @@ export default function FunnelChart({ titulo, subtitulo, etapas, cor = 'brand' }
                 </div>
               )}
 
-              <div className="mx-auto w-full transition-all duration-500" style={{ maxWidth: `${largura}%` }}>
+              <div
+                className="mx-auto w-full sm:max-w-[var(--largura)] transition-all duration-500"
+                style={{ '--largura': `${largura}%` } as CSSProperties}
+              >
                 <div className={`rounded-md px-4 py-3 bg-gradient-to-r ${COR_BARRA[cor]}`}>
                   <div className="flex items-start justify-between gap-3">
                     {/* Sem truncate: numa barra estreita é melhor o rótulo
-                        quebrar linha do que cortar a palavra com reticências. */}
-                    <span className="text-sm font-semibold text-white leading-snug">{etapa.rotulo}</span>
+                        quebrar linha do que cortar a palavra com reticências.
+                        `min-w-0` deixa o texto quebrar em vez de forçar a
+                        barra a crescer e empurrar o número pra fora. */}
+                    <span className="text-sm font-semibold text-white leading-snug min-w-0">
+                      {etapa.rotulo}
+                    </span>
                     <span className="text-lg font-display font-bold text-white font-tabular shrink-0">
                       {etapa.usuarios}
                     </span>
