@@ -11,6 +11,7 @@ import Broadcast from './pages/Broadcast';
 import EmailBlast from './pages/EmailBlast';
 import PromoCodes from './pages/PromoCodes';
 import Tariffs from './pages/Tariffs';
+import Funnel from './pages/Funnel';
 
 function LoginRoute() {
   const { user, loading } = useAuth();
@@ -26,6 +27,7 @@ function AppRoutes() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/funnel" element={<Funnel />} />
           <Route path="/broadcast" element={<Broadcast />} />
           <Route path="/emails" element={<EmailBlast />} />
           <Route path="/promo-codes" element={<PromoCodes />} />

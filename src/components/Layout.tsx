@@ -14,11 +14,13 @@ import {
   DollarSign,
   Send,
   Mail,
+  Filter,
 } from 'lucide-react';
 
 const navigation = [
   { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
   { to: '/users', label: 'Usuários', icon: Users, end: false },
+  { to: '/funnel', label: 'Funil de Conversão', icon: Filter, end: false },
   { to: '/broadcast', label: 'Informativos', icon: Send, end: false },
   { to: '/emails', label: 'E-mails', icon: Mail, end: false },
   { to: '/promo-codes', label: 'Códigos Promocionais', icon: Tag, end: false },

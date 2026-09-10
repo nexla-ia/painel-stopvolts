@@ -50,6 +50,15 @@ export default {
           DEFAULT: withOpacity('--warning'),
           soft: 'rgb(var(--warning) / 0.12)',
         },
+        /* Verde/índigo da identidade StopVolts — usados na tela de funil. */
+        brand: {
+          DEFAULT: withOpacity('--brand-green'),
+          soft: 'rgb(var(--brand-green) / 0.12)',
+        },
+        indigo: {
+          DEFAULT: withOpacity('--brand-indigo'),
+          soft: 'rgb(var(--brand-indigo) / 0.12)',
+        },
       },
       fontFamily: {
         display: ['"Big Shoulders"', 'sans-serif'],

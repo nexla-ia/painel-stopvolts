@@ -21,6 +21,14 @@
   --warning: 180 83 9;
   --grid-line: 16 22 29;
   --grid-line-alpha: 0.04;
+  /*
+   * Verde/índigo da identidade StopVolts (#22C55E / #6366F1) — pedidos
+   * explicitamente para a tela de funil, à parte do --accent laranja usado
+   * no resto do painel. Funcionam iguais em claro e escuro, então não têm
+   * uma redefinição própria em [data-theme='dark'].
+   */
+  --brand-green: 34 197 94;
+  --brand-indigo: 99 102 241;
 }
 
 [data-theme='dark'] {

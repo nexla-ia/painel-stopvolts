@@ -1,6 +1,6 @@
 import { LucideIcon } from 'lucide-react';
 
-type StatAccent = 'volt' | 'info' | 'danger' | 'success' | 'warning';
+type StatAccent = 'volt' | 'info' | 'danger' | 'success' | 'warning' | 'brand' | 'indigo';
 
 const ACCENT_CLASSES: Record<StatAccent, string> = {
   volt: 'bg-volt-soft text-volt',
@@ -8,6 +8,9 @@ const ACCENT_CLASSES: Record<StatAccent, string> = {
   danger: 'bg-danger-soft text-danger',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning',
+  /* Verde/índigo da identidade StopVolts — usados na tela de funil. */
+  brand: 'bg-brand-soft text-brand',
+  indigo: 'bg-indigo-soft text-indigo',
 };
 
 interface StatCardProps {
